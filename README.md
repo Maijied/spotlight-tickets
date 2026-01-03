@@ -4,6 +4,10 @@ A premium, production-ready ticket booking system designed for theatrical perfor
 
 ## 🎭 Visual Showcase
 
+### Landing Page
+Theatrical design with gold accents and Bengali typography.
+![Landing Page](screenshots/landing_page.png)
+
 ### Booking Success & Digital Ticket
 The success page generates a working QR code (via QRServer API) for entry verification and includes a professional print-ready ticket layout.
 ![Success Page with QR and Print](screenshots/success_page_qr.png)
@@ -51,13 +55,13 @@ To enable automatic deployment, follow these exact steps on your GitHub reposito
 
 1. Go to **Settings > Secrets and variables > Actions**.
 2. Click **New repository secret** for each of these:
-   - **`FTP_SERVER`**: `ftpupload.net`
-   - **`FTP_USERNAME`**: `if0_40819537`
-   - **`FTP_PASSWORD`**: `fWNDOUzsifw8yGh`
+   - **`FTP_SERVER`**: Your FTP host (e.g., `ftpupload.net`)
+   - **`FTP_USERNAME`**: Your FTP username (e.g., `if0_xxxx`)
+   - **`FTP_PASSWORD`**: Your FTP password (vPanel Password)
 
-Once these are added, every push will automatically update **http://shiddarth.xo.je**.
+Once these are added, every push to the `main` branch will automatically update your site.
 
-3. **Permissions**: Ensure the root directory and files like `bookings.json` have write permissions on your InfinityFree control panel (File Manager).
+3. **Permissions**: Ensure the root directory and files like `bookings.json` have write permissions (CHMOD 777 or 666) on your hosting control panel.
 
 ### 3. Admin Access
 Standard login path: `public/admin.php`
