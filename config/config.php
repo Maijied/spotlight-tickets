@@ -7,6 +7,7 @@
 define('FLEXPAY_API_KEY', 'YOUR_API_KEY_HERE');
 define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY_HERE');
 define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY_HERE');
+
 // Production Security: Disable error reporting
 error_reporting(0);
 ini_set('display_errors', 0);
@@ -61,6 +62,3 @@ define('CANCEL_URL', BASE_URL . '/callback.php');
 // --- Notification Settings ---
 define('ADMIN_EMAIL', 'admin@example.com');
 define('FROM_EMAIL', 'noreply@example.com');
-
-
-?>

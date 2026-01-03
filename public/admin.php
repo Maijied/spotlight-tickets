@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 }
 
-Database::connect();
+
 $bookings = Database::getBookings();
 // Sort by date descending
 usort($bookings, function($a, $b) {
