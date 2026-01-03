@@ -47,9 +47,17 @@ define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY');
 ```
 
 ### 2. Deployment
-1. Upload the files to your server.
-2. Ensure the root directory and `bookings.json`, `admins.json`, and `sms_log.txt` have appropriate write permissions for the web server.
-3. Access the public interface via `index.php`.
+To enable automatic deployment, follow these exact steps on your GitHub repository:
+
+1. Go to **Settings > Secrets and variables > Actions**.
+2. Click **New repository secret** for each of these:
+   - **`FTP_SERVER`**: `ftpupload.net`
+   - **`FTP_USERNAME`**: `if0_40819537`
+   - **`FTP_PASSWORD`**: `fWNDOUzsifw8yGh`
+
+Once these are added, every push will automatically update **http://shiddarth.xo.je**.
+
+3. **Permissions**: Ensure the root directory and files like `bookings.json` have write permissions on your InfinityFree control panel (File Manager).
 
 ### 3. Admin Access
 Standard login path: `public/admin.php`
