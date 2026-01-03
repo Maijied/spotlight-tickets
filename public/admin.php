@@ -98,6 +98,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $admins = Database::getAdmins(); // Refresh list
         }
     }
+
+    // Update Settings
+    if (isset($_POST['update_settings'])) {
+        $new_settings = [
+            'event_name' => $_POST['event_name'],
+            'event_date_time' => $_POST['event_date_time'],
+            'event_location' => $_POST['event_location'],
+            'capacities' => [
+                'regular' => (int)$_POST['cap_regular'],
+                'vip' => (int)$_POST['cap_vip'],
+                'front' => (int)$_POST['cap_front']
+            ]
+        ];
+        Database::saveSettings($new_settings);
+        header('Location: admin.php?success=settings');
+        exit;
+    }
 }
 
 $bookings = Database::getBookings();
@@ -109,6 +126,18 @@ usort($bookings, function($a, $b) {
 // Calculate Stats
 $totalTickets = array_sum(array_column($bookings, 'quantity'));
 $occupationRate = (TOTAL_CAPACITY > 0) ? min(100, round(($totalTickets / TOTAL_CAPACITY) * 100)) : 0;
+
+// Category Wise Stats
+$catTickets = [
+    'regular' => 0,
+    'vip' => 0,
+    'front' => 0
+];
+foreach ($bookings as $b) {
+    if (stripos($b['tier'], 'regular') !== false) $catTickets['regular'] += $b['quantity'];
+    elseif (stripos($b['tier'], 'vip') !== false) $catTickets['vip'] += $b['quantity'];
+    elseif (stripos($b['tier'], 'front') !== false) $catTickets['front'] += $b['quantity'];
+}
 
 $totalRevenue = array_sum(array_column($bookings, 'amount'));
 $todaySales = 0;
@@ -285,6 +314,28 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             </div>
         </div>
 
+        <div class="section-title">
+            <h2>Category-wise Seat Inventory</h2>
+            <hr>
+        </div>
+
+        <div class="stats">
+            <?php foreach(['regular', 'vip', 'front'] as $cat): 
+                $cap = $TIER_CAPACITIES[$cat] ?? 100;
+                $sold = $catTickets[$cat] ?? 0;
+                $rate = ($cap > 0) ? min(100, round(($sold / $cap) * 100)) : 0;
+            ?>
+            <div class="stat-card">
+                <div class="label"><?php echo ucfirst($cat); ?> Capacity</div>
+                <div class="value" style="font-size: 1.4rem;"><?php echo $sold; ?> / <?php echo $cap; ?></div>
+                <div class="capacity-bar">
+                    <div class="capacity-fill" style="width: <?php echo $rate; ?>%; background: <?php echo ($rate > 90) ? 'var(--danger)' : (($rate > 70) ? 'var(--warning)' : 'var(--success)'); ?>;"></div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;"><?php echo $rate; ?>% Sold</div>
+            </div>
+            <?php endforeach; ?>
+        </div>
+
         <div class="toolbar">
             <div class="search-box">
                 <i class="fas fa-search"></i>
@@ -363,55 +414,94 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
         </div>
 
         <div class="section-title">
-            <h2>System Administrators</h2>
+            <h2>System Administrators & Event Settings</h2>
             <hr>
         </div>
 
         <div class="mgmt-grid">
             <div class="form-card">
-                <h3>Add New Administrator</h3>
-                <form method="POST" class="inline-form">
-                    <div>
-                        <label>Username</label>
-                        <input type="text" name="new_username" placeholder="johndoe" required>
+                <h3>Event Configuration</h3>
+                <form method="POST">
+                    <div style="margin-bottom: 20px;">
+                        <label>Event Name</label>
+                        <input type="text" name="event_name" value="<?php echo htmlspecialchars(EVENT_NAME); ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                     </div>
-                    <div>
-                        <label>Password</label>
-                        <input type="password" name="new_password" required>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                        <div>
+                            <label>Date & Time</label>
+                            <input type="text" name="event_date_time" value="<?php echo htmlspecialchars(EVENT_DATE_TIME); ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <label>Location</label>
+                            <input type="text" name="event_location" value="<?php echo htmlspecialchars(EVENT_LOCATION); ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
                     </div>
-                    <button type="submit" name="add_user" class="btn-small">
-                        <i class="fas fa-user-plus"></i> Create User
-                    </button>
+                    <h4 style="color: var(--primary); margin-top: 30px;">Tier Capacities</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                        <div>
+                            <label>Regular Seats</label>
+                            <input type="number" name="cap_regular" value="<?php echo $TIER_CAPACITIES['regular']; ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <label>VIP Seats</label>
+                            <input type="number" name="cap_vip" value="<?php echo $TIER_CAPACITIES['vip']; ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <label>Front Row</label>
+                            <input type="number" name="cap_front" value="<?php echo $TIER_CAPACITIES['front']; ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                    </div>
+                    <button type="submit" name="update_settings" class="btn-small"><i class="fas fa-save"></i> Save Event Settings</button>
+                    <?php if(isset($_GET['success']) && $_GET['success'] === 'settings'): ?>
+                        <span style="color: var(--success); margin-left: 15px; font-size: 0.9rem;">Settings updated!</span>
+                    <?php endif; ?>
                 </form>
             </div>
 
-            <div class="form-card">
-                <h3>Current Team</h3>
-                <table style="background: transparent; box-shadow: none; margin: 0;">
-                    <tbody>
-                        <?php foreach($admins as $a): ?>
-                        <tr>
-                            <td style="padding: 10px 0; border: none;">
-                                <i class="fas fa-user-circle" style="color: var(--primary);"></i>
-                                <span style="margin-left: 10px;"><?php echo htmlspecialchars($a['username']); ?></span>
-                                <?php if($a['username'] === $_SESSION['admin_user']): ?>
-                                <span style="font-size: 0.75rem; color: var(--primary); margin-left: 5px;">(You)</span>
-                                <?php endif; ?>
-                            </td>
-                            <td style="padding: 10px 0; border: none; text-align: right;">
-                                <?php if($a['username'] !== $_SESSION['admin_user']): ?>
-                                <form method="POST" style="display:inline;" onsubmit="return confirm('Remove access for this user?');">
-                                    <input type="hidden" name="delete_user" value="<?php echo htmlspecialchars($a['username']); ?>">
-                                    <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer;">
-                                        <i class="fas fa-trash-alt"></i>
-                                    </button>
-                                </form>
-                                <?php endif; ?>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
+            <div style="display: flex; flex-direction: column; gap: 30px;">
+                <div class="form-card">
+                    <h3>Add New Admin</h3>
+                    <form method="POST">
+                        <div style="margin-bottom: 15px;">
+                            <label>Username</label>
+                            <input type="text" name="new_username" placeholder="johndoe" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <label>Password</label>
+                            <input type="password" name="new_password" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <button type="submit" name="add_user" class="btn-small"><i class="fas fa-user-plus"></i> Create User</button>
+                    </form>
+                </div>
+
+                <div class="form-card">
+                    <h3>Team</h3>
+                    <table style="background: transparent; box-shadow: none; margin: 0;">
+                        <tbody>
+                            <?php foreach($admins as $a): ?>
+                            <tr>
+                                <td style="padding: 10px 0; border: none;">
+                                    <i class="fas fa-user-circle" style="color: var(--primary);"></i>
+                                    <span style="margin-left: 10px;"><?php echo htmlspecialchars($a['username']); ?></span>
+                                    <?php if($a['username'] === $_SESSION['admin_user']): ?>
+                                    <span style="font-size: 0.75rem; color: var(--primary); margin-left: 5px;">(You)</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td style="padding: 10px 0; border: none; text-align: right;">
+                                    <?php if($a['username'] !== $_SESSION['admin_user']): ?>
+                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Remove access for this user?');">
+                                        <input type="hidden" name="delete_user" value="<?php echo htmlspecialchars($a['username']); ?>">
+                                        <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer;">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

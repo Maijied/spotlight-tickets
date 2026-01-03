@@ -21,12 +21,22 @@ define('DB_NAME', 'if0_40819537_shiddarth');
 define('DB_USER', 'if0_40819537');
 define('DB_PASS', 'fWNDOUzsifw8yGh');
 
-// --- Drama Show Configuration ---
-define('EVENT_NAME', 'সিদ্ধার্থ');
-define('EVENT_DATE_TIME', 'January 25, 2026 | 06:30 PM');
-define('EVENT_LOCATION', 'National Theatre, Dhaka');
-define('TOTAL_CAPACITY', 500); // Total available seats
+// --- Dynamic Event Configuration ---
+require_once __DIR__ . '/../includes/db.php';
+$DYNAMIC_SETTINGS = Database::getSettings();
+
+define('EVENT_NAME', $DYNAMIC_SETTINGS['event_name'] ?? 'সিদ্ধার্থ');
+define('EVENT_DATE_TIME', $DYNAMIC_SETTINGS['event_date_time'] ?? 'January 25, 2026 | 06:30 PM');
+define('EVENT_LOCATION', $DYNAMIC_SETTINGS['event_location'] ?? 'National Theatre, Dhaka');
+define('TOTAL_CAPACITY', array_sum($DYNAMIC_SETTINGS['capacities'] ?? [500])); 
 define('CURRENCY', 'BDT');
+
+// Individual Tier Capacities
+$TIER_CAPACITIES = $DYNAMIC_SETTINGS['capacities'] ?? [
+    'regular' => 300,
+    'vip' => 100,
+    'front' => 100
+];
 
 // Ticket Tiers
 $TICKET_TIERS = [

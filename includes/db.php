@@ -7,6 +7,7 @@ class Database {
     private static $pdo = null;
     private static $bookings_json = __DIR__ . '/../bookings.json';
     private static $admins_json   = __DIR__ . '/../admins.json';
+    private static $settings_json = __DIR__ . '/../settings.json';
 
     /**
      * Connect to MySQL if configured, otherwise stay in JSON mode
@@ -157,5 +158,30 @@ class Database {
             return $a['username'] !== $username;
         });
         return file_put_contents(self::$admins_json, json_encode(array_values($admins), JSON_PRETTY_PRINT));
+    }
+
+    /**
+     * --- SETTINGS LOGIC ---
+     */
+
+    public static function getSettings() {
+        if (!file_exists(self::$settings_json)) {
+            // Default initial settings
+            return [
+                'event_name' => 'সিদ্ধার্থ',
+                'event_date_time' => 'January 25, 2026 | 06:30 PM',
+                'event_location' => 'National Theatre, Dhaka',
+                'capacities' => [
+                    'regular' => 300,
+                    'vip' => 100,
+                    'front' => 100
+                ]
+            ];
+        }
+        return json_decode(file_get_contents(self::$settings_json), true) ?: [];
+    }
+
+    public static function saveSettings($data) {
+        return file_put_contents(self::$settings_json, json_encode($data, JSON_PRETTY_PRINT));
     }
 }

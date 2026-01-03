@@ -1,0 +1,10 @@
+{
+    "event_name": "Siddhartha Live 2026",
+    "event_date_time": "January 25, 2026 | 06:30 PM",
+    "event_location": "National Theatre, Dhaka",
+    "capacities": {
+        "regular": 5,
+        "vip": 100,
+        "front": 100
+    }
+}
