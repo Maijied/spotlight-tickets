@@ -1,53 +1,65 @@
-# FlexPayBD Ticket Selling System
+# Spotlight Tickets - Theatrical Booking System
 
-A simple, production-ready PHP system for selling event tickets using the FlexPayBD payment gateway.
+A premium, production-ready ticket booking system designed for theatrical performances and drama shows. This system features a rich, antique dramatic UI, secure payment integration via FlexPayBD, and a robust multi-user administrative backend.
 
-## Features
-- Modern UI for ticket booking.
-- Integration with FlexPayBD hosted payment page.
-- Server-side payment verification for security.
-- Email confirmation upon successful payment.
-- Configurable event name and ticket price.
+## 🎭 Visual Showcase
 
-## Project Structure
-- `/api/`: Backend handlers for payment creation.
-- `/config/`: Configuration files (API keys, event info).
-- `/includes/`: Reusable classes for FlexPay API and Mailer.
-- `/public/`: Frontend pages (Form, Success, Cancel).
-- `callback.php`: The main entry point for post-payment logic.
+### Booking Success & Digital Ticket
+The success page generates a working QR code (via QRServer API) for entry verification and includes a professional print-ready ticket layout.
+![Success Page with QR and Print](screenshots/success_page_qr.png)
 
-## Setup Instructions
+### Admin Dashboard
+Comprehensive overview of sales, revenue, and recent bookings.
+![Admin Dashboard](screenshots/admin_dashboard.png)
 
-### 1. Configure API Keys
-Open `config/config.php` and fill in your credentials from the FlexPayBD Merchant Dashboard:
+### Multi-User Management
+Secure session-based admin system with the ability to manage multiple administrative accounts.
+![Admin User Management](screenshots/admin_management.png)
+
+## ✨ Core Features
+- **Premium UI/UX**: Theatrical purple and gold theme with custom typography (Playfair Display & Hind Siliguri).
+- **Dynamic Pricing**: 
+    - Early Bird Discounts (Date-based).
+    - Bundle Discounts (Quantity-based).
+    - Promo Code support.
+- **Secure Payments**: Integrated with **FlexPayBD** Hosted Payment Page.
+- **Digital Tickets**: Auto-generated QR codes accessible on the success page and via email.
+- **Admin Control**: Robust dashboard for sales tracking and administrative user management.
+- **Persistence**: Lightweight JSON-based storage for bookings and administrative credentials.
+
+## 🛠️ Tech Stack
+- **Frontend**: Vanilla HTML5, CSS3 (Custom Theatrical Design).
+- **Backend**: Native PHP 7.4+.
+- **Database**: JSON Storage (Bookings & Admins).
+- **External APIs**: 
+    - [FlexPayBD](https://flexpaybd.com/) (Payments).
+    - [QRServer](https://goqr.me/api/) (QR Generation).
+    - [Google Fonts](https://fonts.google.com/).
+
+## 🚀 Setup & Installation
+
+### 1. Configuration
+Update `config/config.php` with your FlexPayBD credentials:
 ```php
-define('FLEXPAY_API_KEY', 'YOUR_API_KEY_HERE');
-define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY_HERE');
-define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY_HERE');
+define('FLEXPAY_API_KEY', 'YOUR_API_KEY');
+define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY');
+define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY');
 ```
 
-### 2. Local Environment
-- Ensure you have **PHP 7.4+** installed.
-- Ensure the **cURL** extension is enabled in `php.ini`.
-- Place the project in your web server root (e.g., `htdocs` for XAMPP).
-- Update `BASE_URL` in `config/config.php` to match your local path.
+### 2. Deployment
+1. Upload the files to your server.
+2. Ensure the root directory and `bookings.json`, `admins.json`, and `sms_log.txt` have appropriate write permissions for the web server.
+3. Access the public interface via `index.php`.
 
-### 3. Verification & Testing
-- Use the sandbox credentials provided by FlexPayBD docs.
-- Test the full flow: Form -> Payment Page -> Success Page.
-- Check if the confirmation email is triggered (requires a working SMTP server or local mail hog).
+### 3. Admin Access
+Standard login path: `public/admin.php`
+- **Default Username**: `admin`
+- **Default Password**: `admin123`
 
-### 4. Switch to Production
-- Change the API keys to Live keys.
-- Ensure `BASE_URL` uses `https`.
-- Set `error_reporting(0)` in `config/config.php`.
+## 🔒 Security Measures
+- **Password Hashing**: Administrative passwords are securely hashed using `PASSWORD_DEFAULT`.
+- **Session Security**: Protected admin routes with session-based authentication.
+- **Data Protection**: `.gitignore` configured to prevent sensitive data (`admins.json`, etc.) from being pushed to public repositories.
 
-## Common Mistakes to Avoid
-- **Security**: Never expose `SECRET_KEY` or `API_KEY` in frontend JS. Keep them in `config.php`.
-- **Verification**: Always call the `verify` API on the callback. Do not trust the redirect parameters alone.
-- **URLs**: Ensure `SUCCESS_URL` and `CANCEL_URL` are publicly accessible for FlexPayBD's server to redirect properly.
-
-## Expansion Ideas (TODOs in Code)
-- **Database**: Add `tickets` table to store customer data and payment status.
-- **SMS**: Integrate providers like Twilio or local BD SMS gateways.
-- **Tickets**: Use libraries like `TCPDF` or `dompdf` to generate downloadable tickets with QR codes.
+## 📜 License
+This project is for demonstration and production use in theatrical events. All rights reserved.
