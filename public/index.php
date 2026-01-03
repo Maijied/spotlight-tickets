@@ -183,6 +183,26 @@ foreach ($bookings as $b) {
         hr { border: 0; border-top: 1px solid var(--border); margin: 35px 0; }
 
         @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+
+        /* Slot Card Styles */
+        .slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .slot-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            padding: 15px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: 0.3s;
+            text-align: center;
+        }
+        .slot-card:hover { border-color: var(--accent); background: rgba(249, 115, 22, 0.1); }
+        .slot-card.selected {
+            border-color: var(--accent);
+            background: rgba(249, 115, 22, 0.2);
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.3);
+        }
+        .slot-time { font-size: 1.1rem; font-weight: 700; color: #fff; display: block; margin-bottom: 5px; }
+        .slot-loc { font-size: 0.85rem; color: #9ca3af; }
     </style>
 </head>
 <body>
@@ -224,14 +244,20 @@ foreach ($bookings as $b) {
         </div>
 
             <div class="form-group">
-                <label for="slot_id">শো এর সময় ও স্থান</label>
-                <select id="slot_id" name="slot_id" required onchange="updateTierAvailability(); calculatePrice();">
-                    <?php foreach($SLOTS as $s): ?>
-                        <option value="<?php echo $s['id']; ?>" data-time="<?php echo htmlspecialchars($s['time']); ?>" data-loc="<?php echo htmlspecialchars($s['location']); ?>">
-                            <?php echo htmlspecialchars($s['time']); ?> - <?php echo htmlspecialchars($s['location']); ?>
-                        </option>
+                <label>শো এর সময় ও স্থান</label>
+                <div class="slot-grid" id="slot-grid">
+                    <?php foreach($SLOTS as $index => $s): ?>
+                        <div class="slot-card <?php echo $index === 0 ? 'selected' : ''; ?>" 
+                             onclick="selectSlot('<?php echo $s['id']; ?>', this)"
+                             data-slot-id="<?php echo $s['id']; ?>"
+                        >
+                            <span class="slot-time"><?php echo htmlspecialchars($s['time']); ?></span>
+                            <span class="slot-loc"><?php echo htmlspecialchars($s['location']); ?></span>
+                        </div>
                     <?php endforeach; ?>
-                </select>
+                </div>
+                <!-- Hidden Input -->
+                <input type="hidden" id="slot_id" name="slot_id" value="<?php echo $SLOTS[0]['id']; ?>">
             </div>
 
             <div class="form-grid">
@@ -285,30 +311,55 @@ foreach ($bookings as $b) {
         const slots = <?php echo json_encode($SLOTS); ?>;
         const slotSales = <?php echo json_encode($slotSales); ?>;
 
+        function selectSlot(slotId, cardDesc) {
+            // Visual Update
+            document.querySelectorAll('.slot-card').forEach(c => c.classList.remove('selected'));
+            cardDesc.classList.add('selected');
+            
+            // Logic Update
+            document.getElementById('slot_id').value = slotId;
+            updateTierAvailability();
+            calculatePrice();
+        }
+
         function updateTierAvailability() {
             const slotId = document.getElementById('slot_id').value;
             const ticketTypeSelect = document.getElementById('ticket_type');
             const selectedSlot = slots.find(s => s.id === slotId);
             const sales = slotSales[slotId] || {regular: 0, vip: 0, front: 0};
             
+            // Update Base Prices for this slot
+            const slotPrices = selectedSlot.prices || {};
+
             Array.from(ticketTypeSelect.options).forEach(opt => {
                 const tierKey = opt.value;
                 const cap = selectedSlot.capacities[tierKey] || 0;
                 const sold = sales[tierKey] || 0;
                 const isSoldOut = sold >= cap;
                 
+                // Update Price Data
+                if (slotPrices[tierKey]) {
+                    opt.setAttribute('data-price', slotPrices[tierKey]);
+                    // Update option text if not sold out to show new price
+                    const baseName = tiers[tierKey].name; // Assuming 'name' is static
+                    // We might want to append price to name, or just rely on breakdown
+                } else {
+                    // Revert to global default
+                    opt.setAttribute('data-price', tiers[tierKey].price);
+                }
+
                 if (isSoldOut) {
                     opt.disabled = true;
                     opt.style.color = "#666";
-                    if (!opt.innerText.includes('(Sold Out)')) opt.innerText += " (Sold Out)";
+                    if (!opt.innerText.includes('(Sold Out)')) opt.innerText = tiers[tierKey].name + " (Sold Out)";
                 } else {
                     opt.disabled = false;
                     opt.style.color = "";
-                    opt.innerText = opt.innerText.replace(" (Sold Out)", "");
+                    opt.innerText = tiers[tierKey].name;
                 }
             });
 
-            // Update Header info if needed
+            // Update Header info
             document.getElementById('event-time-display').innerText = selectedSlot.time + " | " + selectedSlot.location;
         }
 

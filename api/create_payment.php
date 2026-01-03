@@ -28,6 +28,17 @@ if (!$full_name || !$email || !$phone_number || !isset($TICKET_TIERS[$ticket_typ
 
 // 2. Server-side Price Calculation (Security)
 $base_price_per_ticket = $TICKET_TIERS[$ticket_type]['price'];
+
+// Override price from slot config if exists
+if ($slot_id) {
+    foreach ($SLOTS as $s) {
+        if ($s['id'] === $slot_id && isset($s['prices'][$ticket_type])) {
+            $base_price_per_ticket = (float)$s['prices'][$ticket_type];
+            break;
+        }
+    }
+}
+
 $total_base = $base_price_per_ticket * $quantity;
 $final_amount = (float)$total_base;
 

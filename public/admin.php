@@ -119,6 +119,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'regular' => (int)$_POST['cap_regular'],
                 'vip' => (int)$_POST['cap_vip'],
                 'front' => (int)$_POST['cap_front']
+            ],
+            'prices' => [
+                'regular' => (int)$_POST['price_regular'],
+                'vip' => (int)$_POST['price_vip'],
+                'front' => (int)$_POST['price_front']
             ]
         ];
         $settings['slots'][] = $new_slot;
@@ -497,9 +502,9 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                             <div style="font-weight: 600;"><?php echo htmlspecialchars($slot['time']); ?></div>
                             <div style="font-size: 0.85rem; color: var(--text-dim);"><?php echo htmlspecialchars($slot['location']); ?></div>
                             <div style="font-size: 0.8rem; margin-top: 5px; color: var(--primary);">
-                                Reg: <?php echo $slot['capacities']['regular']; ?> | 
-                                VIP: <?php echo $slot['capacities']['vip']; ?> | 
-                                Front: <?php echo $slot['capacities']['front']; ?>
+                                Reg: <?php echo $slot['capacities']['regular']; ?> (<?php echo $slot['prices']['regular'] ?? '500'; ?>৳) | 
+                                VIP: <?php echo $slot['capacities']['vip']; ?> (<?php echo $slot['prices']['vip'] ?? '1000'; ?>৳) | 
+                                Front: <?php echo $slot['capacities']['front']; ?> (<?php echo $slot['prices']['front'] ?? '200'; ?>৳)
                             </div>
                         </div>
                         <form method="POST" onsubmit="return confirm('Delete this slot? This will NOT delete existing bookings.');">
@@ -536,6 +541,20 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                         <div>
                             <label>Front Row</label>
                             <input type="number" name="cap_front" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+                        <div>
+                            <label>Regular Price</label>
+                            <input type="number" name="price_regular" value="500" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <label>VIP Price</label>
+                            <input type="number" name="price_vip" value="1000" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                        </div>
+                        <div>
+                            <label>Front Row Price</label>
+                            <input type="number" name="price_front" value="200" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                         </div>
                     </div>
                     <button type="submit" name="add_slot" class="btn-small"><i class="fas fa-plus-circle"></i> Add Show Slot</button>
