@@ -11,6 +11,12 @@ define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY_HERE');
 // Set to true for dummy/sandbox testing without real API keys
 define('DUMMY_MODE', true);
 
+// --- MySQL Database Configuration ---
+define('DB_HOST', 'sql303.infinityfree.com');
+define('DB_NAME', 'if0_40819537_shiddarth');
+define('DB_USER', 'if0_40819537');
+define('DB_PASS', 'fWNDOUzsifw8yGh');
+
 // --- Drama Show Configuration ---
 define('EVENT_NAME', 'সিদ্ধার্থ');
 define('CURRENCY', 'BDT');
