@@ -1,4 +1,4 @@
-# Spotlight Tickets - Theatrical Booking System
+# Spotlight Tickets - Theatrical Booking System 
 
 A premium, production-ready ticket booking system designed for theatrical performances and drama shows. This system features a rich, antique dramatic UI, secure payment integration via FlexPayBD, and a robust multi-user administrative backend.
 
