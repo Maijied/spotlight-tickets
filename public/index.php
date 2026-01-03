@@ -65,12 +65,13 @@ foreach ($bookings as $b) {
 
         .header h1 { 
             font-family: 'Playfair Display', serif;
-            font-size: 4rem; 
+            font-size: clamp(2.5rem, 8vw, 4rem); 
             margin-bottom: 5px; 
             color: var(--accent);
             text-shadow: 0 0 20px rgba(0,0,0,0.8);
             letter-spacing: 3px;
             animation: glow 3s ease-in-out infinite;
+            line-height: 1.1;
         }
 
         @keyframes borderPulse {
@@ -80,10 +81,10 @@ foreach ($bookings as $b) {
         }
 
         .container {
-            width: 100%;
+            width: 95%;
             max-width: 650px;
             background: var(--card-bg);
-            padding: 50px;
+            padding: 40px;
             border-radius: 8px;
             box-shadow: 0 0 60px rgba(0,0,0,0.9);
             border: 2px solid var(--border);
@@ -182,7 +183,15 @@ foreach ($bookings as $b) {
 
         hr { border: 0; border-top: 1px solid var(--border); margin: 35px 0; }
 
-        @media (max-width: 480px) { .form-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 600px) {
+            .container { padding: 25px 20px; }
+            .form-grid { grid-template-columns: 1fr; gap: 15px; }
+            .slot-grid { grid-template-columns: 1fr; } 
+            .btn { font-size: 1.2rem; padding: 18px; }
+            .price-summary { padding: 20px; }
+            .final-price { font-size: 2.5rem; }
+            .offer-section h3 { font-size: 1.1rem; }
+        }
 
         /* Slot Card Styles */
         .slot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; margin-bottom: 25px; }
