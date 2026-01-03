@@ -1,0 +1,11 @@
+# Data files
+bookings.json
+sms_log.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+.gemini/
+*.log
