@@ -8,9 +8,9 @@ define('FLEXPAY_API_KEY', 'YOUR_API_KEY_HERE');
 define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY_HERE');
 define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY_HERE');
 
-// Debugging: Temporarily enable error reporting
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+// Production Security: Disable error reporting
+error_reporting(0);
+ini_set('display_errors', 0);
 
 // Set to true for dummy/sandbox testing without real API keys
 define('DUMMY_MODE', true);
