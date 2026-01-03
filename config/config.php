@@ -23,6 +23,9 @@ define('DB_PASS', 'fWNDOUzsifw8yGh');
 
 // --- Drama Show Configuration ---
 define('EVENT_NAME', 'সিদ্ধার্থ');
+define('EVENT_DATE_TIME', 'January 25, 2026 | 06:30 PM');
+define('EVENT_LOCATION', 'National Theatre, Dhaka');
+define('TOTAL_CAPACITY', 500); // Total available seats
 define('CURRENCY', 'BDT');
 
 // Ticket Tiers

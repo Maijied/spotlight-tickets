@@ -107,6 +107,9 @@ usort($bookings, function($a, $b) {
 });
 
 // Calculate Stats
+$totalTickets = array_sum(array_column($bookings, 'quantity'));
+$occupationRate = (TOTAL_CAPACITY > 0) ? min(100, round(($totalTickets / TOTAL_CAPACITY) * 100)) : 0;
+
 $totalRevenue = array_sum(array_column($bookings, 'amount'));
 $todaySales = 0;
 $today = date('Y-m-d');
@@ -159,6 +162,10 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
         .stat-card .label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
         .stat-card .value { font-size: 1.8rem; font-weight: 600; margin-top: 10px; color: var(--warning); }
         .stat-card .icon { float: right; font-size: 2rem; color: var(--primary); opacity: 0.3; }
+
+        /* Capacity Progress Bar */
+        .capacity-bar { height: 8px; background: var(--bg); border-radius: 4px; margin-top: 15px; overflow: hidden; position: relative; }
+        .capacity-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); border-radius: 4px; transition: width 0.5s ease; }
 
         /* Filters & Search */
         .toolbar { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
@@ -227,12 +234,10 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
     <div class="container">
         <header>
             <div>
-                <h1>Sales Dashboard</h1>
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 10px;">
-                    <span class="status-tag status-confirmed">
-                        <span class="status-dot"></span> 
-                        <span style="font-size: 0.85rem; color: var(--text-dim);">Logged in as <strong><?php echo htmlspecialchars($_SESSION['admin_user']); ?></strong></span>
-                    </span>
+                <h1>Sales Dashboard - <?php echo EVENT_NAME; ?></h1>
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 15px; color: var(--text-dim); font-size: 0.9rem;">
+                    <span><i class="fas fa-calendar-alt" style="color: var(--primary);"></i> <?php echo EVENT_DATE_TIME; ?></span>
+                    <span><i class="fas fa-map-marker-alt" style="color: var(--primary);"></i> <?php echo EVENT_LOCATION; ?></span>
                 </div>
             </div>
             <div class="header-actions">
@@ -261,6 +266,15 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                 <i class="fas fa-calendar-day icon"></i>
                 <div class="label">Today's Sales</div>
                 <div class="value" style="color: var(--success);">BDT <?php echo number_format($todaySales, 2); ?></div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-users icon"></i>
+                <div class="label">Seat Availability</div>
+                <div class="value"><?php echo $totalTickets; ?> / <?php echo TOTAL_CAPACITY; ?></div>
+                <div class="capacity-bar">
+                    <div class="capacity-fill" style="width: <?php echo $occupationRate; ?>%;"></div>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;"><?php echo $occupationRate; ?>% Capacity Filled</div>
             </div>
             <div class="stat-card">
                 <i class="fas fa-star icon"></i>

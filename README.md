@@ -14,7 +14,7 @@ The success page generates a working QR code (via QRServer API) for entry verifi
 
 ### Admin Dashboard
 Comprehensive overview of sales, revenue, and recent bookings.
-![Admin Dashboard](screenshots/admin_dashboard.png)
+![Admin Dashboard](screenshots/admin_dashboard_final.png)
 
 ### Multi-User Management
 Secure session-based admin system with the ability to manage multiple administrative accounts.
