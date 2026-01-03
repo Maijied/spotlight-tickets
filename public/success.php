@@ -99,7 +99,24 @@ $amount = isset($_GET['amount']) ? htmlspecialchars($_GET['amount']) : '0';
             box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
         }
 
+        .qr-section {
+            background: #fff;
+            padding: 20px;
+            border-radius: 4px;
+            margin-bottom: 30px;
+            display: inline-block;
+            border: 8px solid var(--accent);
+            box-shadow: 0 0 20px rgba(249, 115, 22, 0.3);
+        }
+
         .qr-section p { color: #000; font-weight: 700; margin-bottom: 10px; font-size: 0.85rem; text-transform: uppercase; }
+
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 20px;
+        }
 
         .btn {
             display: inline-block;
@@ -114,9 +131,28 @@ $amount = isset($_GET['amount']) ? htmlspecialchars($_GET['amount']) : '0';
             letter-spacing: 3px;
             transition: 0.3s;
             font-family: 'Playfair Display', serif;
+            cursor: pointer;
         }
 
         .btn:hover { background: var(--accent); color: #000; transform: scale(1.05); }
+        .btn-secondary { background: transparent; }
+
+        @media print {
+            body { background: none; color: #000; padding: 0; }
+            body::before { display: none; }
+            .container { 
+                border: 2px solid #000; 
+                box-shadow: none; 
+                background: #fff; 
+                max-width: 100%; 
+                margin: 0;
+            }
+            .btn-group, .icon { display: none; }
+            .details { border: 1px solid #ddd; background: #fff; }
+            .details div { border-bottom: 1px solid #eee; }
+            .details span, h1 { color: #000; text-shadow: none; animation: none; }
+            .qr-section { border: 4px solid #000; box-shadow: none; }
+        }
     </style>
 </head>
 <body>
@@ -135,12 +171,13 @@ $amount = isset($_GET['amount']) ? htmlspecialchars($_GET['amount']) : '0';
 
         <div class="qr-section">
             <p>আপনার ডিজিটাল টিকেট</p>
-            <img src="https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=<?php echo urlencode($txnid); ?>&choe=UTF-8" alt="QR Code">
+            <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=<?php echo urlencode($txnid); ?>" alt="QR Code">
             <p style="margin-top: 10px; font-family: monospace;"><?php echo $txnid; ?></p>
         </div>
 
-        <div style="margin-top: 20px;">
-            <a href="index.php" class="btn">হোম পেজে ফিরুন</a>
+        <div class="btn-group">
+            <button onclick="window.print()" class="btn">টিকেট প্রিন্ট করুন</button>
+            <a href="index.php" class="btn btn-secondary">ফিরে যান</a>
         </div>
     </div>
 </body>

@@ -30,7 +30,7 @@ class TicketMailer {
             
             <div style='text-align: center; margin: 30px 0; padding: 20px; border: 1px solid #ddd; border-radius: 10px;'>
                 <p style='margin-bottom: 15px; font-weight: bold;'>YOUR DIGITAL TICKET (SCAN AT ENTRANCE)</p>
-                <img src='https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=" . urlencode($txnid) . "&choe=UTF-8' alt='QR Code Ticket'>
+                <img src='https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=" . urlencode($txnid) . "' alt='QR Code Ticket'>
                 <p style='margin-top: 10px; font-family: monospace; color: #666;'>$txnid</p>
             </div>
 
