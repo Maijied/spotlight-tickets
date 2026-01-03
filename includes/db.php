@@ -1,39 +1,69 @@
 <?php
 /**
- * Simple JSON Database Wrapper (Fallback for missing SQLite driver)
+ * Database Wrapper supporting both MySQL and JSON Storage
  */
 
 class Database {
-    private static $db_file = __DIR__ . '/../bookings.json';
+    private static $pdo = null;
+    private static $bookings_json = __DIR__ . '/../bookings.json';
+    private static $admins_json   = __DIR__ . '/../admins.json';
 
     /**
-     * Get bookings from JSON file
-     */
-    public static function getBookings() {
-        if (!file_exists(self::$db_file)) {
-            return [];
-        }
-        $data = file_get_contents(self::$db_file);
-        return json_decode($data, true) ?: [];
-    }
-
-    /**
-     * Initialize/Connect logic (Placeholder for JSON)
+     * Connect to MySQL if configured, otherwise stay in JSON mode
      */
     public static function connect() {
-        if (!file_exists(self::$db_file)) {
-            file_put_contents(self::$db_file, json_encode([]));
+        if (self::$pdo !== null) return self::$pdo;
+
+        // Only attempt MySQL if the config has been changed from placeholders
+        if (defined('DB_HOST') && DB_HOST !== 'sqlXXXX.infinityfree.com' && !empty(DB_PASS)) {
+            try {
+                $dsn = "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4";
+                self::$pdo = new PDO($dsn, DB_USER, DB_PASS, [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                ]);
+                return self::$pdo;
+            } catch (Exception $e) {
+                error_log("DB Connection failed: " . $e->getMessage());
+            }
         }
-        return true;
+        return null;
     }
 
     /**
-     * Save a new booking
+     * --- BOOKINGS LOGIC ---
      */
+
+    public static function getBookings() {
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->query("SELECT * FROM bookings ORDER BY created_at DESC");
+            return $stmt->fetchAll();
+        }
+
+        // Fallback to JSON
+        if (!file_exists(self::$bookings_json)) return [];
+        return json_decode(file_get_contents(self::$bookings_json), true) ?: [];
+    }
+
     public static function saveBooking($data) {
-        self::connect();
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->prepare("INSERT INTO bookings (name, email, phone, txnid, tier, quantity, amount, promo_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            return $stmt->execute([
+                $data['name'], 
+                $data['email'], 
+                $data['phone'], 
+                $data['txnid'], 
+                $data['tier'], 
+                $data['quantity'] ?? 1, 
+                $data['amount'], 
+                $data['promo_used'] ?? 'NONE'
+            ]);
+        }
+
+        // Fallback to JSON
         $bookings = self::getBookings();
-        
         $new_booking = [
             'id' => count($bookings) + 1,
             'name' => $data['name'],
@@ -46,8 +76,61 @@ class Database {
             'promo_used' => $data['promo_used'] ?? 'NONE',
             'created_at' => date('Y-m-d H:i:s')
         ];
-
         $bookings[] = $new_booking;
-        return file_put_contents(self::$db_file, json_encode($bookings, JSON_PRETTY_PRINT));
+        return file_put_contents(self::$bookings_json, json_encode($bookings, JSON_PRETTY_PRINT));
+    }
+
+    /**
+     * --- ADMINS LOGIC ---
+     */
+
+    public static function getAdmins() {
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->query("SELECT * FROM admins ORDER BY id ASC");
+            return $stmt->fetchAll();
+        }
+
+        // Fallback to JSON
+        if (!file_exists(self::$admins_json)) return [];
+        return json_decode(file_get_contents(self::$admins_json), true) ?: [];
+    }
+
+    public static function saveAdmin($username, $password_hash) {
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->prepare("INSERT INTO admins (username, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password = VALUES(password)");
+            return $stmt->execute([$username, $password_hash]);
+        }
+
+        // Fallback to JSON
+        $admins = self::getAdmins();
+        $exists = false;
+        foreach($admins as &$a) {
+            if ($a['username'] === $username) {
+                $a['password'] = $password_hash;
+                $exists = true;
+                break;
+            }
+        }
+        if (!$exists) {
+            $admins[] = ['username' => $username, 'password' => $password_hash];
+        }
+        return file_put_contents(self::$admins_json, json_encode($admins, JSON_PRETTY_PRINT));
+    }
+
+    public static function deleteAdmin($username) {
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->prepare("DELETE FROM admins WHERE username = ?");
+            return $stmt->execute([$username]);
+        }
+
+        // Fallback to JSON
+        $admins = self::getAdmins();
+        $admins = array_filter($admins, function($a) use ($username) {
+            return $a['username'] !== $username;
+        });
+        return file_put_contents(self::$admins_json, json_encode(array_values($admins), JSON_PRETTY_PRINT));
     }
 }
