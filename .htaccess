@@ -1,0 +1,10 @@
+# Security Hardening
+# Block access to data and sensitive files
+<FilesMatch "\.(json|sql|log|txt)$">
+    Order deny,allow
+    Deny from all
+</FilesMatch>
+
+# Block access to the config directory
+RewriteEngine On
+RewriteRule ^config/ - [F,L]

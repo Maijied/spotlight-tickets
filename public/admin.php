@@ -7,24 +7,8 @@ require_once __DIR__ . '/../includes/db.php';
 
 session_start();
 
-$admins_file = __DIR__ . '/../admins.json';
-
-/**
- * Load all admin users
- */
-function getAdmins($file) {
-    if (!file_exists($file)) return [];
-    return json_decode(file_get_contents($file), true) ?: [];
-}
-
-/**
- * Save all admin users
- */
-function saveAdmins($file, $admins) {
-    return file_put_contents($file, json_encode($admins, JSON_PRETTY_PRINT));
-}
-
-$admins = getAdmins($admins_file);
+Database::connect();
+$admins = Database::getAdmins();
 
 // --- Handle Login ---
 $error = '';
@@ -100,11 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         foreach($admins as $a) { if($a['username'] === $new_user) $exists = true; }
 
         if (!$exists && !empty($new_user) && !empty($new_pass)) {
-            $admins[] = [
-                'username' => $new_user,
-                'password' => password_hash($new_pass, PASSWORD_DEFAULT)
-            ];
-            saveAdmins($admins_file, $admins);
+            Database::saveAdmin($new_user, password_hash($new_pass, PASSWORD_DEFAULT));
+            $admins = Database::getAdmins(); // Refresh list
         }
     }
     
@@ -113,10 +94,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user_to_delete = $_POST['delete_user'];
         // Don't delete self or last admin
         if ($user_to_delete !== $_SESSION['admin_user'] && count($admins) > 1) {
-            $admins = array_filter($admins, function($a) use ($user_to_delete) {
-                return $a['username'] !== $user_to_delete;
-            });
-            saveAdmins($admins_file, $admins);
+            Database::deleteAdmin($user_to_delete);
+            $admins = Database::getAdmins(); // Refresh list
         }
     }
 }
@@ -220,9 +199,9 @@ usort($bookings, function($a, $b) {
                         <strong><?php echo htmlspecialchars($b['name']); ?></strong><br>
                         <small style="color: #94a3b8;"><?php echo htmlspecialchars($b['email']); ?></small>
                     </td>
-                    <td><span class="badge badge-<?php echo strtolower(explode(' ', $b['tier'])[0]); ?>"><?php echo htmlspecialchars($b['tier']); ?></span></td>
-                    <td style="text-align: center;"><?php echo $b['quantity']; ?></td>
-                    <td>BDT <?php echo number_format($b['amount'], 2); ?></td>
+                    <td><span class="badge badge-<?php echo htmlspecialchars(strtolower(explode(' ', $b['tier'])[0])); ?>"><?php echo htmlspecialchars($b['tier']); ?></span></td>
+                    <td style="text-align: center;"><?php echo (int)$b['quantity']; ?></td>
+                    <td>BDT <?php echo number_format((float)$b['amount'], 2); ?></td>
                     <td style="font-family: monospace; font-size: 0.85rem;"><?php echo htmlspecialchars($b['txnid']); ?></td>
                 </tr>
                 <?php endforeach; ?>
