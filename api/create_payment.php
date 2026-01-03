@@ -20,6 +20,7 @@ $phone_number = filter_input(INPUT_POST, 'phone_number', FILTER_SANITIZE_SPECIAL
 $ticket_type = filter_input(INPUT_POST, 'ticket_type', FILTER_SANITIZE_SPECIAL_CHARS);
 $quantity = filter_input(INPUT_POST, 'quantity', FILTER_VALIDATE_INT);
 $promo_code = filter_input(INPUT_POST, 'promo_code', FILTER_SANITIZE_SPECIAL_CHARS);
+$slot_id = filter_input(INPUT_POST, 'slot_id', FILTER_SANITIZE_SPECIAL_CHARS);
 
 if (!$full_name || !$email || !$phone_number || !isset($TICKET_TIERS[$ticket_type]) || $quantity < 1) {
     die("Error: Invalid booking information.");
@@ -77,6 +78,7 @@ $payment_data = [
         'quantity' => $quantity,
         'phone' => $phone_number,
         'promo_used' => !empty($clean_promo) ? $clean_promo : 'NONE',
+        'slot_id' => $slot_id,
         'discounts' => [
             'early_bird' => $date_discount . '%',
             'bundle' => $bundle_discount . '%',

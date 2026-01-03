@@ -40,6 +40,7 @@ if (isset($verification['status']) && $verification['status'] === 'COMPLETED') {
     $quantity = $metadata['quantity'] ?? 1;
     $customer_phone = $metadata['phone'] ?? null;
     $promo_used = $metadata['promo_used'] ?? 'NONE';
+    $slot_id = $metadata['slot_id'] ?? 'slot_default';
 
     // 3. Trigger Post-Payment Actions
     
@@ -52,12 +53,13 @@ if (isset($verification['status']) && $verification['status'] === 'COMPLETED') {
         'tier' => $tier,
         'quantity' => $quantity,
         'amount' => $amount,
-        'promo_used' => $promo_used
+        'promo_used' => $promo_used,
+        'slot_id' => $slot_id
     ]);
     
     // b) Send Confirmation Email
     if ($customer_email) {
-        TicketMailer::sendConfirmation($customer_email, $customer_name, $amount, $txnid, $tier);
+        TicketMailer::sendConfirmation($customer_email, $customer_name, $amount, $txnid, $tier, $slot_id);
     }
     
     // c) Trigger SMS notification (Dummy)

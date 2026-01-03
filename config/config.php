@@ -25,18 +25,23 @@ define('DB_PASS', 'fWNDOUzsifw8yGh');
 require_once __DIR__ . '/../includes/db.php';
 $DYNAMIC_SETTINGS = Database::getSettings();
 
-define('EVENT_NAME', $DYNAMIC_SETTINGS['event_name'] ?? 'সিদ্ধার্থ');
-define('EVENT_DATE_TIME', $DYNAMIC_SETTINGS['event_date_time'] ?? 'January 25, 2026 | 06:30 PM');
-define('EVENT_LOCATION', $DYNAMIC_SETTINGS['event_location'] ?? 'National Theatre, Dhaka');
-define('TOTAL_CAPACITY', array_sum($DYNAMIC_SETTINGS['capacities'] ?? [500])); 
+define('EVENT_NAME', $DYNAMIC_SETTINGS['event_name'] ?? 'Siddhartha Live 2026');
+
+// Slots Management
+$SLOTS = $DYNAMIC_SETTINGS['slots'] ?? [];
+$FIRST_SLOT = $SLOTS[0] ?? [
+    'time' => 'N/A', 
+    'location' => 'N/A', 
+    'capacities' => ['regular' => 0, 'vip' => 0, 'front' => 0]
+];
+
+define('EVENT_DATE_TIME', $FIRST_SLOT['time']);
+define('EVENT_LOCATION', $FIRST_SLOT['location']);
+define('TOTAL_CAPACITY', array_sum($FIRST_SLOT['capacities'])); 
 define('CURRENCY', 'BDT');
 
-// Individual Tier Capacities
-$TIER_CAPACITIES = $DYNAMIC_SETTINGS['capacities'] ?? [
-    'regular' => 300,
-    'vip' => 100,
-    'front' => 100
-];
+// Individual Tier Capacities (Legacy support/default)
+$TIER_CAPACITIES = $FIRST_SLOT['capacities'];
 
 // Ticket Tiers
 $TICKET_TIERS = [

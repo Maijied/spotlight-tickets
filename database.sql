@@ -17,12 +17,13 @@ CREATE TABLE IF NOT EXISTS bookings (
     quantity INT DEFAULT 1,
     amount DECIMAL(10, 2) NOT NULL,
     promo_used VARCHAR(50) DEFAULT 'NONE',
+    slot_id VARCHAR(50) DEFAULT 'slot_default',
     status ENUM('pending', 'confirmed', 'checked-in') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Initial default admin (admin / admin123)
--- Hash: $2y$10$GsXdPGs4CJJwmi1NHnpYK.W38odyRfGnaV3h/NjqQELlBkAzQXRjW
+-- Hash: $2y$10$GsXdPGs4CJJwmi1NHnpYK.W38odyRfGnaV3h/NjqQELlBkAzXXRjW
 INSERT INTO admins (username, password) 
 VALUES ('admin', '$2y$10$GsXdPGs4CJJwmi1NHnpYK.W38odyRfGnaV3h/NjqQELlBkAzQXRjW')
 ON DUPLICATE KEY UPDATE username=username;

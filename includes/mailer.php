@@ -9,7 +9,19 @@ class TicketMailer {
     /**
      * Send confirmation email to customer
      */
-    public static function sendConfirmation($customer_email, $customer_name, $amount, $txnid, $tier = 'General') {
+    public static function sendConfirmation($customer_email, $customer_name, $amount, $txnid, $tier = 'General', $slot_id = 'slot_default') {
+        require_once __DIR__ . '/db.php';
+        $settings = Database::getSettings();
+        $slot_info = ['time' => 'N/A', 'location' => 'N/A'];
+        if (isset($settings['slots'])) {
+            foreach ($settings['slots'] as $s) {
+                if ($s['id'] === $slot_id) {
+                    $slot_info = $s;
+                    break;
+                }
+            }
+        }
+
         $subject = "Ticket Confirmation - " . EVENT_NAME;
         
         $message = "
@@ -23,6 +35,8 @@ class TicketMailer {
             <hr>
             <p><strong>Transaction Details:</strong></p>
             <ul>
+                <li><strong>Show Time:</strong> " . $slot_info['time'] . "</li>
+                <li><strong>Location:</strong> " . $slot_info['location'] . "</li>
                 <li><strong>Ticket Type:</strong> $tier</li>
                 <li><strong>Transaction ID:</strong> $txnid</li>
                 <li><strong>Amount Paid:</strong> " . CURRENCY . " " . number_format($amount, 2) . "</li>

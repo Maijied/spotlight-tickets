@@ -101,18 +101,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Update Settings
     if (isset($_POST['update_settings'])) {
-        $new_settings = [
-            'event_name' => $_POST['event_name'],
-            'event_date_time' => $_POST['event_date_time'],
-            'event_location' => $_POST['event_location'],
+        $existing = Database::getSettings();
+        $existing['event_name'] = $_POST['event_name'];
+        Database::saveSettings($existing);
+        header('Location: admin.php?success=settings');
+        exit;
+    }
+
+    // Add Slot
+    if (isset($_POST['add_slot'])) {
+        $settings = Database::getSettings();
+        $new_slot = [
+            'id' => 'slot_' . time(),
+            'time' => $_POST['slot_time'],
+            'location' => $_POST['slot_location'],
             'capacities' => [
                 'regular' => (int)$_POST['cap_regular'],
                 'vip' => (int)$_POST['cap_vip'],
                 'front' => (int)$_POST['cap_front']
             ]
         ];
-        Database::saveSettings($new_settings);
-        header('Location: admin.php?success=settings');
+        $settings['slots'][] = $new_slot;
+        Database::saveSettings($settings);
+        header('Location: admin.php?success=slot');
+        exit;
+    }
+
+    // Delete Slot
+    if (isset($_POST['delete_slot'])) {
+        $settings = Database::getSettings();
+        $sid = $_POST['delete_slot'];
+        $settings['slots'] = array_filter($settings['slots'], function($s) use ($sid) {
+            return $s['id'] !== $sid;
+        });
+        $settings['slots'] = array_values($settings['slots']); // Reset keys
+        Database::saveSettings($settings);
+        header('Location: admin.php?success=slot_deleted');
         exit;
     }
 }
@@ -125,18 +149,25 @@ usort($bookings, function($a, $b) {
 
 // Calculate Stats
 $totalTickets = array_sum(array_column($bookings, 'quantity'));
-$occupationRate = (TOTAL_CAPACITY > 0) ? min(100, round(($totalTickets / TOTAL_CAPACITY) * 100)) : 0;
+$TOTAL_CONFIGURED_CAPACITY = 0;
+foreach($SLOTS as $s) {
+    $TOTAL_CONFIGURED_CAPACITY += array_sum($s['capacities']);
+}
+$occupationRate = ($TOTAL_CONFIGURED_CAPACITY > 0) ? min(100, round(($totalTickets / $TOTAL_CONFIGURED_CAPACITY) * 100)) : 0;
 
-// Category Wise Stats
-$catTickets = [
-    'regular' => 0,
-    'vip' => 0,
-    'front' => 0
-];
+// Category & Slot Wise Stats
+$slotStats = []; // [slot_id] => [regular => X, vip => Y, ...]
+foreach($SLOTS as $s) {
+    $slotStats[$s['id']] = ['regular' => 0, 'vip' => 0, 'front' => 0];
+}
+
 foreach ($bookings as $b) {
-    if (stripos($b['tier'], 'regular') !== false) $catTickets['regular'] += $b['quantity'];
-    elseif (stripos($b['tier'], 'vip') !== false) $catTickets['vip'] += $b['quantity'];
-    elseif (stripos($b['tier'], 'front') !== false) $catTickets['front'] += $b['quantity'];
+    $sid = $b['slot_id'] ?? 'slot_default';
+    if (!isset($slotStats[$sid])) $slotStats[$sid] = ['regular' => 0, 'vip' => 0, 'front' => 0];
+    
+    if (stripos($b['tier'], 'regular') !== false) $slotStats[$sid]['regular'] += $b['quantity'];
+    elseif (stripos($b['tier'], 'vip') !== false) $slotStats[$sid]['vip'] += $b['quantity'];
+    elseif (stripos($b['tier'], 'front') !== false) $slotStats[$sid]['front'] += $b['quantity'];
 }
 
 $totalRevenue = array_sum(array_column($bookings, 'amount'));
@@ -298,8 +329,8 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             </div>
             <div class="stat-card">
                 <i class="fas fa-users icon"></i>
-                <div class="label">Seat Availability</div>
-                <div class="value"><?php echo $totalTickets; ?> / <?php echo TOTAL_CAPACITY; ?></div>
+                <div class="label">Total Seat Fill-up</div>
+                <div class="value"><?php echo $totalTickets; ?> / <?php echo $TOTAL_CONFIGURED_CAPACITY; ?></div>
                 <div class="capacity-bar">
                     <div class="capacity-fill" style="width: <?php echo $occupationRate; ?>%;"></div>
                 </div>
@@ -315,26 +346,36 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
         </div>
 
         <div class="section-title">
-            <h2>Category-wise Seat Inventory</h2>
+            <h2>Slot-wise Seat Inventory</h2>
             <hr>
         </div>
 
-        <div class="stats">
-            <?php foreach(['regular', 'vip', 'front'] as $cat): 
-                $cap = $TIER_CAPACITIES[$cat] ?? 100;
-                $sold = $catTickets[$cat] ?? 0;
-                $rate = ($cap > 0) ? min(100, round(($sold / $cap) * 100)) : 0;
-            ?>
-            <div class="stat-card">
-                <div class="label"><?php echo ucfirst($cat); ?> Capacity</div>
-                <div class="value" style="font-size: 1.4rem;"><?php echo $sold; ?> / <?php echo $cap; ?></div>
-                <div class="capacity-bar">
-                    <div class="capacity-fill" style="width: <?php echo $rate; ?>%; background: <?php echo ($rate > 90) ? 'var(--danger)' : (($rate > 70) ? 'var(--warning)' : 'var(--success)'); ?>;"></div>
+        <?php foreach($SLOTS as $slot): ?>
+        <div style="margin-bottom: 40px; border-left: 4px solid var(--primary); padding-left: 20px;">
+            <h3 style="color: var(--text); font-size: 1.1rem; margin-bottom: 15px;">
+                <i class="fas fa-clock" style="color: var(--primary);"></i> <?php echo htmlspecialchars($slot['time']); ?> 
+                <span style="margin-left: 10px; color: var(--text-dim); font-weight: normal; font-size: 0.9rem;">
+                    <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($slot['location']); ?>
+                </span>
+            </h3>
+            <div class="stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                <?php foreach(['regular', 'vip', 'front'] as $cat): 
+                    $cap = $slot['capacities'][$cat] ?? 0;
+                    $sold = $slotStats[$slot['id']][$cat] ?? 0;
+                    $rate = ($cap > 0) ? min(100, round(($sold / $cap) * 100)) : 0;
+                ?>
+                <div class="stat-card" style="padding: 15px;">
+                    <div class="label"><?php echo ucfirst($cat); ?></div>
+                    <div class="value" style="font-size: 1.2rem;"><?php echo $sold; ?> / <?php echo $cap; ?></div>
+                    <div class="capacity-bar" style="height: 6px;">
+                        <div class="capacity-fill" style="width: <?php echo $rate; ?>%; background: <?php echo ($rate > 90) ? 'var(--danger)' : (($rate > 70) ? 'var(--warning)' : 'var(--success)'); ?>;"></div>
+                    </div>
+                    <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 5px;"><?php echo $rate; ?>% Sold</div>
                 </div>
-                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;"><?php echo $rate; ?>% Sold</div>
+                <?php endforeach; ?>
             </div>
-            <?php endforeach; ?>
         </div>
+        <?php endforeach; ?>
 
         <div class="toolbar">
             <div class="search-box">
@@ -342,6 +383,12 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                 <input type="text" id="bookingSearch" placeholder="Search by name, email, or TXN ID..." onkeyup="filterTable()">
             </div>
             <div class="filters">
+                <select id="slotFilter" onchange="filterTable()">
+                    <option value="">All Slots</option>
+                    <?php foreach($SLOTS as $s): ?>
+                        <option value="<?php echo $s['id']; ?>"><?php echo htmlspecialchars($s['time']); ?></option>
+                    <?php endforeach; ?>
+                </select>
                 <select id="tierFilter" onchange="filterTable()">
                     <option value="">All Tiers</option>
                     <option value="Regular">Regular</option>
@@ -361,7 +408,8 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             <table id="bookingsTable">
                 <thead>
                     <tr>
-                        <th>Date & Time</th>
+                        <th>Booking Date</th>
+                        <th>Show Timing</th>
                         <th>Customer Details</th>
                         <th>Tier</th>
                         <th>Qty</th>
@@ -372,10 +420,19 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                 </thead>
                 <tbody>
                     <?php foreach($bookings as $b): ?>
-                    <tr data-tier="<?php echo htmlspecialchars($b['tier']); ?>" data-status="<?php echo htmlspecialchars($b['status'] ?? 'confirmed'); ?>">
+                    <tr data-tier="<?php echo htmlspecialchars($b['tier']); ?>" data-status="<?php echo htmlspecialchars($b['status'] ?? 'confirmed'); ?>" data-slot="<?php echo htmlspecialchars($b['slot_id'] ?? 'slot_default'); ?>">
                         <td style="font-size: 0.85rem; color: var(--text-dim);">
                             <?php echo date('M d, Y', strtotime($b['created_at'])); ?><br>
                             <span style="font-size: 0.75rem;"><?php echo date('H:i', strtotime($b['created_at'])); ?></span>
+                        </td>
+                        <td style="font-size: 0.85rem;">
+                            <?php 
+                                $s_id = $b['slot_id'] ?? 'slot_default';
+                                $s_info = array_filter($SLOTS, function($s) use ($s_id) { return $s['id'] === $s_id; });
+                                $s_info = reset($s_info);
+                                echo $s_info ? htmlspecialchars($s_info['time']) : 'Default Slot';
+                            ?><br>
+                            <span style="font-size: 0.75rem; color: var(--text-dim);"><?php echo $s_info ? htmlspecialchars($s_info['location']) : 'N/A'; ?></span>
                         </td>
                         <td>
                             <div style="font-weight: 600;"><?php echo htmlspecialchars($b['name']); ?></div>
@@ -419,41 +476,71 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
         </div>
 
         <div class="mgmt-grid">
+            <div class="form-card" style="margin-bottom: 30px;">
+                <h3>Event Name</h3>
+                <form method="POST" style="display: flex; gap: 15px;">
+                    <input type="text" name="event_name" value="<?php echo htmlspecialchars(EVENT_NAME); ?>" required style="flex-grow: 1; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                    <button type="submit" name="update_settings" class="btn-small"><i class="fas fa-save"></i> Update Name</button>
+                    <?php if(isset($_GET['success']) && $_GET['success'] === 'settings'): ?>
+                        <span style="color: var(--success); align-self: center;">Updated!</span>
+                    <?php endif; ?>
+                </form>
+            </div>
+
             <div class="form-card">
-                <h3>Event Configuration</h3>
-                <form method="POST">
-                    <div style="margin-bottom: 20px;">
-                        <label>Event Name</label>
-                        <input type="text" name="event_name" value="<?php echo htmlspecialchars(EVENT_NAME); ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                <h3>Manage Show Slots</h3>
+                
+                <div style="margin-bottom: 30px;">
+                    <?php foreach($SLOTS as $slot): ?>
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;">
+                        <div>
+                            <div style="font-weight: 600;"><?php echo htmlspecialchars($slot['time']); ?></div>
+                            <div style="font-size: 0.85rem; color: var(--text-dim);"><?php echo htmlspecialchars($slot['location']); ?></div>
+                            <div style="font-size: 0.8rem; margin-top: 5px; color: var(--primary);">
+                                Reg: <?php echo $slot['capacities']['regular']; ?> | 
+                                VIP: <?php echo $slot['capacities']['vip']; ?> | 
+                                Front: <?php echo $slot['capacities']['front']; ?>
+                            </div>
+                        </div>
+                        <form method="POST" onsubmit="return confirm('Delete this slot? This will NOT delete existing bookings.');">
+                            <input type="hidden" name="delete_slot" value="<?php echo $slot['id']; ?>">
+                            <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </form>
                     </div>
+                    <?php endforeach; ?>
+                </div>
+
+                <h4 style="color: var(--primary); border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px;">Add New Slot</h4>
+                <form method="POST">
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                         <div>
                             <label>Date & Time</label>
-                            <input type="text" name="event_date_time" value="<?php echo htmlspecialchars(EVENT_DATE_TIME); ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            <input type="text" name="slot_time" placeholder="Jan 30, 07:00 PM" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                         </div>
                         <div>
                             <label>Location</label>
-                            <input type="text" name="event_location" value="<?php echo htmlspecialchars(EVENT_LOCATION); ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            <input type="text" name="slot_location" placeholder="Chittagong Shilpakala" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                         </div>
                     </div>
-                    <h4 style="color: var(--primary); margin-top: 30px;">Tier Capacities</h4>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px;">
                         <div>
                             <label>Regular Seats</label>
-                            <input type="number" name="cap_regular" value="<?php echo $TIER_CAPACITIES['regular']; ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            <input type="number" name="cap_regular" value="300" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                         </div>
                         <div>
                             <label>VIP Seats</label>
-                            <input type="number" name="cap_vip" value="<?php echo $TIER_CAPACITIES['vip']; ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            <input type="number" name="cap_vip" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                         </div>
                         <div>
                             <label>Front Row</label>
-                            <input type="number" name="cap_front" value="<?php echo $TIER_CAPACITIES['front']; ?>" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            <input type="number" name="cap_front" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
                         </div>
                     </div>
-                    <button type="submit" name="update_settings" class="btn-small"><i class="fas fa-save"></i> Save Event Settings</button>
-                    <?php if(isset($_GET['success']) && $_GET['success'] === 'settings'): ?>
-                        <span style="color: var(--success); margin-left: 15px; font-size: 0.9rem;">Settings updated!</span>
+                    <button type="submit" name="add_slot" class="btn-small"><i class="fas fa-plus-circle"></i> Add Show Slot</button>
+                    <?php if(isset($_GET['success']) && $_GET['success'] === 'slot'): ?>
+                        <span style="color: var(--success); margin-left: 15px; font-size: 0.9rem;">Slot added!</span>
                     <?php endif; ?>
                 </form>
             </div>
@@ -512,6 +599,7 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             const filter = input.value.toLowerCase();
             const tierFilter = document.getElementById("tierFilter").value.toLowerCase();
             const statusFilter = document.getElementById("statusFilter").value.toLowerCase();
+            const slotFilter = document.getElementById("slotFilter").value;
             const table = document.getElementById("bookingsTable");
             const tr = table.getElementsByTagName("tr");
 
@@ -519,12 +607,14 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                 const tdText = tr[i].innerText.toLowerCase();
                 const tier = tr[i].getAttribute("data-tier").toLowerCase();
                 const status = tr[i].getAttribute("data-status").toLowerCase();
+                const slot = tr[i].getAttribute("data-slot");
 
                 let matchesSearch = tdText.indexOf(filter) > -1;
                 let matchesTier = !tierFilter || tier.indexOf(tierFilter) > -1;
                 let matchesStatus = !statusFilter || status === statusFilter;
+                let matchesSlot = !slotFilter || slot === slotFilter;
 
-                if (matchesSearch && matchesTier && matchesStatus) {
+                if (matchesSearch && matchesTier && matchesStatus && matchesSlot) {
                     tr[i].style.display = "";
                 } else {
                     tr[i].style.display = "none";

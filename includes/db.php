@@ -50,7 +50,7 @@ class Database {
     public static function saveBooking($data) {
         $pdo = self::connect();
         if ($pdo) {
-            $stmt = $pdo->prepare("INSERT INTO bookings (name, email, phone, txnid, tier, quantity, amount, promo_used, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO bookings (name, email, phone, txnid, tier, quantity, amount, promo_used, status, slot_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             return $stmt->execute([
                 $data['name'], 
                 $data['email'], 
@@ -60,7 +60,8 @@ class Database {
                 $data['quantity'] ?? 1, 
                 $data['amount'], 
                 $data['promo_used'] ?? 'NONE',
-                $data['status'] ?? 'pending'
+                $data['status'] ?? 'pending',
+                $data['slot_id'] ?? 'slot_default'
             ]);
         }
 
@@ -77,6 +78,7 @@ class Database {
             'amount' => $data['amount'],
             'promo_used' => $data['promo_used'] ?? 'NONE',
             'status' => $data['status'] ?? 'pending',
+            'slot_id' => $data['slot_id'] ?? 'slot_default',
             'created_at' => date('Y-m-d H:i:s')
         ];
         $bookings[] = $new_booking;
@@ -168,13 +170,18 @@ class Database {
         if (!file_exists(self::$settings_json)) {
             // Default initial settings
             return [
-                'event_name' => 'সিদ্ধার্থ',
-                'event_date_time' => 'January 25, 2026 | 06:30 PM',
-                'event_location' => 'National Theatre, Dhaka',
-                'capacities' => [
-                    'regular' => 300,
-                    'vip' => 100,
-                    'front' => 100
+                'event_name' => 'Siddhartha Live 2026',
+                'slots' => [
+                    [
+                        'id' => 'slot_default',
+                        'time' => 'January 25, 2026 | 06:30 PM',
+                        'location' => 'National Theatre, Dhaka',
+                        'capacities' => [
+                            'regular' => 300,
+                            'vip' => 100,
+                            'front' => 100
+                        ]
+                    ]
                 ]
             ];
         }

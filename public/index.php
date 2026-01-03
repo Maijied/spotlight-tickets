@@ -2,13 +2,16 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 
-// Calculate current sales per tier
+// Calculate current sales per slot and tier
 $bookings = Database::getBookings();
-$catSales = ['regular' => 0, 'vip' => 0, 'front' => 0];
+$slotSales = []; // [slot_id][tier] => count
 foreach ($bookings as $b) {
-    if (stripos($b['tier'], 'regular') !== false) $catSales['regular'] += $b['quantity'];
-    elseif (stripos($b['tier'], 'vip') !== false) $catSales['vip'] += $b['quantity'];
-    elseif (stripos($b['tier'], 'front') !== false) $catSales['front'] += $b['quantity'];
+    $sid = $b['slot_id'] ?? 'slot_default';
+    if (!isset($slotSales[$sid])) $slotSales[$sid] = ['regular' => 0, 'vip' => 0, 'front' => 0];
+    
+    if (stripos($b['tier'], 'regular') !== false) $slotSales[$sid]['regular'] += $b['quantity'];
+    elseif (stripos($b['tier'], 'vip') !== false) $slotSales[$sid]['vip'] += $b['quantity'];
+    elseif (stripos($b['tier'], 'front') !== false) $slotSales[$sid]['front'] += $b['quantity'];
 }
 ?>
 <!DOCTYPE html>
@@ -188,8 +191,10 @@ foreach ($bookings as $b) {
             <h1><?php echo EVENT_NAME; ?></h1>
             <p style="color: var(--accent); font-style: italic; letter-spacing: 3px; font-weight: 600;">এক কালজয়ী নাট্য গাথা</p>
             <div style="margin-top: 15px; font-size: 0.95rem; color: #9ca3af; letter-spacing: 1px;">
-                <i class="fas fa-calendar-alt" style="color: var(--accent);"></i> <?php echo EVENT_DATE_TIME; ?> | 
-                <i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> <?php echo EVENT_LOCATION; ?>
+                <span id="event-time-display">
+                    <i class="fas fa-calendar-alt" style="color: var(--accent);"></i> <?php echo EVENT_DATE_TIME; ?> | 
+                    <i class="fas fa-map-marker-alt" style="color: var(--accent);"></i> <?php echo EVENT_LOCATION; ?>
+                </span>
             </div>
         </div>
 
@@ -218,20 +223,24 @@ foreach ($bookings as $b) {
             <div class="price-breakdown" id="price-breakdown">১টি টিকেট &times; ৫০০ BDT</div>
         </div>
 
-        <form action="../api/create_payment.php" method="POST">
+            <div class="form-group">
+                <label for="slot_id">শো এর সময় ও স্থান</label>
+                <select id="slot_id" name="slot_id" required onchange="updateTierAvailability(); calculatePrice();">
+                    <?php foreach($SLOTS as $s): ?>
+                        <option value="<?php echo $s['id']; ?>" data-time="<?php echo htmlspecialchars($s['time']); ?>" data-loc="<?php echo htmlspecialchars($s['location']); ?>">
+                            <?php echo htmlspecialchars($s['time']); ?> - <?php echo htmlspecialchars($s['location']); ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
+            </div>
+
             <div class="form-grid">
                 <div class="form-group">
                     <label for="ticket_type">আসন বিভাগ</label>
                     <select id="ticket_type" name="ticket_type" required onchange="calculatePrice()">
-                        <?php foreach($TICKET_TIERS as $key => $tier): 
-                            $sold = $catSales[$key] ?? 0;
-                            $cap = $TIER_CAPACITIES[$key] ?? 100;
-                            $isSoldOut = ($sold >= $cap);
-                        ?>
-                            <option value="<?php echo $key; ?>" 
-                                    data-price="<?php echo $tier['price']; ?>"
-                                    <?php echo $isSoldOut ? 'disabled style="color: #666;"' : ''; ?>>
-                                <?php echo $tier['name']; ?> <?php echo $isSoldOut ? '(Sold Out)' : ''; ?>
+                        <?php foreach($TICKET_TIERS as $key => $tier): ?>
+                            <option value="<?php echo $key; ?>" data-price="<?php echo $tier['price']; ?>">
+                                <?php echo $tier['name']; ?>
                             </option>
                         <?php endforeach; ?>
                     </select>
@@ -273,6 +282,35 @@ foreach ($bookings as $b) {
         const bundleRules = <?php echo json_encode($BUNDLE_RULES); ?>;
         const promoCodes = <?php echo json_encode($PROMO_CODES); ?>;
         const tiers = <?php echo json_encode($TICKET_TIERS); ?>;
+        const slots = <?php echo json_encode($SLOTS); ?>;
+        const slotSales = <?php echo json_encode($slotSales); ?>;
+
+        function updateTierAvailability() {
+            const slotId = document.getElementById('slot_id').value;
+            const ticketTypeSelect = document.getElementById('ticket_type');
+            const selectedSlot = slots.find(s => s.id === slotId);
+            const sales = slotSales[slotId] || {regular: 0, vip: 0, front: 0};
+            
+            Array.from(ticketTypeSelect.options).forEach(opt => {
+                const tierKey = opt.value;
+                const cap = selectedSlot.capacities[tierKey] || 0;
+                const sold = sales[tierKey] || 0;
+                const isSoldOut = sold >= cap;
+                
+                if (isSoldOut) {
+                    opt.disabled = true;
+                    opt.style.color = "#666";
+                    if (!opt.innerText.includes('(Sold Out)')) opt.innerText += " (Sold Out)";
+                } else {
+                    opt.disabled = false;
+                    opt.style.color = "";
+                    opt.innerText = opt.innerText.replace(" (Sold Out)", "");
+                }
+            });
+
+            // Update Header info if needed
+            document.getElementById('event-time-display').innerText = selectedSlot.time + " | " + selectedSlot.location;
+        }
 
         function calculatePrice() {
             const ticketTypeSelect = document.getElementById('ticket_type');
@@ -327,7 +365,10 @@ foreach ($bookings as $b) {
             offerDisplay.innerHTML = appliedOffers.map(o => `<span class="badge badge-offer">${o}</span>`).join('');
         }
 
-            window.onload = calculatePrice;
+            window.onload = () => {
+                updateTierAvailability();
+                calculatePrice();
+            };
     </script>
 </body>
 </html>
