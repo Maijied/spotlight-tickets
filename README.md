@@ -68,6 +68,7 @@ Standard login path: `public/admin.php`
 - **Password Hashing**: Administrative passwords are securely hashed using `PASSWORD_DEFAULT`.
 - **Session Security**: Protected admin routes with session-based authentication.
 - **Data Protection**: `.gitignore` configured to prevent sensitive data (`admins.json`, etc.) from being pushed to public repositories.
+- **Access Restrictions**: `.htaccess` implemented to block direct web access to JSON, SQL, and configuration files.
 
 ## 📜 License
 This project is for demonstration and production use in theatrical events. All rights reserved.
