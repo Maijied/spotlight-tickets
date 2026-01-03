@@ -49,7 +49,7 @@ class Database {
     public static function saveBooking($data) {
         $pdo = self::connect();
         if ($pdo) {
-            $stmt = $pdo->prepare("INSERT INTO bookings (name, email, phone, txnid, tier, quantity, amount, promo_used) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            $stmt = $pdo->prepare("INSERT INTO bookings (name, email, phone, txnid, tier, quantity, amount, promo_used, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
             return $stmt->execute([
                 $data['name'], 
                 $data['email'], 
@@ -58,7 +58,8 @@ class Database {
                 $data['tier'], 
                 $data['quantity'] ?? 1, 
                 $data['amount'], 
-                $data['promo_used'] ?? 'NONE'
+                $data['promo_used'] ?? 'NONE',
+                $data['status'] ?? 'pending'
             ]);
         }
 
@@ -74,10 +75,34 @@ class Database {
             'quantity' => $data['quantity'] ?? 1,
             'amount' => $data['amount'],
             'promo_used' => $data['promo_used'] ?? 'NONE',
+            'status' => $data['status'] ?? 'pending',
             'created_at' => date('Y-m-d H:i:s')
         ];
         $bookings[] = $new_booking;
         return file_put_contents(self::$bookings_json, json_encode($bookings, JSON_PRETTY_PRINT));
+    }
+
+    public static function updateBookingStatus($txnid, $status) {
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->prepare("UPDATE bookings SET status = ? WHERE txnid = ?");
+            return $stmt->execute([$status, $txnid]);
+        }
+
+        // Fallback to JSON
+        $bookings = self::getBookings();
+        $updated = false;
+        foreach ($bookings as &$b) {
+            if ($b['txnid'] === $txnid) {
+                $b['status'] = $status;
+                $updated = true;
+                break;
+            }
+        }
+        if ($updated) {
+            return file_put_contents(self::$bookings_json, json_encode($bookings, JSON_PRETTY_PRINT));
+        }
+        return false;
     }
 
     /**

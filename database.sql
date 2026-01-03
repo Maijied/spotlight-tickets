@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     quantity INT DEFAULT 1,
     amount DECIMAL(10, 2) NOT NULL,
     promo_used VARCHAR(50) DEFAULT 'NONE',
+    status ENUM('pending', 'confirmed', 'checked-in') DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
