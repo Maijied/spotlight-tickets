@@ -4,9 +4,9 @@
  */
 
 // --- FlexPayBD API Credentials ---
-define('FLEXPAY_API_KEY', 'YOUR_API_KEY_HERE');
-define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY_HERE');
-define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY_HERE');
+define('FLEXPAY_API_KEY', 'gnXi7etgWNhFyFGZFrOMYyrmnF4A1eGU5SC2QRmUvILOlNc2Ef');
+define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY_HERE'); // <--- MISSING
+define('FLEXPAY_BRAND_KEY', 'cPSX0a4EexE4MVqT7v0Pp80dfpFHHQZpD2kvNLahbcAMm5qKXC');
 
 // Production Security: Disable error reporting
 error_reporting(0);
