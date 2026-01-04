@@ -256,13 +256,22 @@ foreach ($bookings as $b) {
             <div class="form-group">
                 <label>শো এর সময় ও স্থান</label>
                 <div class="slot-grid" id="slot-grid">
-                    <?php foreach($SLOTS as $index => $s): ?>
+                    <?php foreach($SLOTS as $index => $s): 
+                        $sid = $s['id'];
+                        $sales = $slotSales[$sid] ?? ['regular'=>0,'vip'=>0,'front'=>0];
+                        $totalCap = array_sum($s['capacities']);
+                        $totalSold = array_sum($sales);
+                        $avail = max(0, $totalCap - $totalSold);
+                    ?>
                         <div class="slot-card <?php echo $index === 0 ? 'selected' : ''; ?>" 
                              onclick="selectSlot('<?php echo $s['id']; ?>', this)"
                              data-slot-id="<?php echo $s['id']; ?>"
                         >
                             <span class="slot-time"><?php echo htmlspecialchars($s['time']); ?></span>
                             <span class="slot-loc"><?php echo htmlspecialchars($s['location']); ?></span>
+                            <span style="display: block; font-size: 0.75rem; color: <?php echo $avail > 0 ? '#10b981' : '#ef4444'; ?>; margin-top: 5px;">
+                                <?php echo $avail > 0 ? $avail . ' seats available' : 'SOLD OUT'; ?>
+                            </span>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -343,29 +352,26 @@ foreach ($bookings as $b) {
 
             Array.from(ticketTypeSelect.options).forEach(opt => {
                 const tierKey = opt.value;
-                const cap = selectedSlot.capacities[tierKey] || 0;
-                const sold = sales[tierKey] || 0;
+                const cap = parseInt(selectedSlot.capacities[tierKey] || 0);
+                const sold = parseInt(sales[tierKey] || 0);
+                const available = Math.max(0, cap - sold);
                 const isSoldOut = sold >= cap;
                 
                 // Update Price Data
                 if (slotPrices[tierKey]) {
                     opt.setAttribute('data-price', slotPrices[tierKey]);
-                    // Update option text if not sold out to show new price
-                    const baseName = tiers[tierKey].name; // Assuming 'name' is static
-                    // We might want to append price to name, or just rely on breakdown
                 } else {
-                    // Revert to global default
                     opt.setAttribute('data-price', tiers[tierKey].price);
                 }
 
                 if (isSoldOut) {
                     opt.disabled = true;
                     opt.style.color = "#666";
-                    if (!opt.innerText.includes('(Sold Out)')) opt.innerText = tiers[tierKey].name + " (Sold Out)";
+                    opt.innerText = tiers[tierKey].name + " (Sold Out)";
                 } else {
                     opt.disabled = false;
                     opt.style.color = "";
-                    opt.innerText = tiers[tierKey].name;
+                    opt.innerText = `${tiers[tierKey].name} (${available} Available)`;
                 }
             });
 

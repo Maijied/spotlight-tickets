@@ -480,8 +480,9 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             <hr>
         </div>
 
-        <div class="mgmt-grid">
-            <div class="form-card" style="margin-bottom: 30px;">
+        <div class="mgmt-grid" style="display: flex; flex-direction: column; gap: 40px;">
+            <!-- 1. Event Name Section -->
+            <div class="form-card">
                 <h3>Event Name</h3>
                 <form method="POST" style="display: flex; gap: 15px;">
                     <input type="text" name="event_name" value="<?php echo htmlspecialchars(EVENT_NAME); ?>" required style="flex-grow: 1; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
@@ -492,10 +493,63 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                 </form>
             </div>
 
+            <!-- 2. Slot Management Section (Full Width) -->
             <div class="form-card">
-                <h3>Manage Show Slots</h3>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
+                    <h3 style="margin: 0;">Manage Show Slots</h3>
+                    <button onclick="document.getElementById('addSlotForm').style.display = document.getElementById('addSlotForm').style.display === 'none' ? 'block' : 'none'" class="btn-small">
+                        <i class="fas fa-plus-circle"></i> Add New Slot
+                    </button>
+                </div>
+
+                <!-- Add Slot Form (Hidden by default or Toggled) -->
+                <div id="addSlotForm" style="display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid var(--primary);">
+                    <h4 style="color: var(--primary); margin-top: 0;">Create New Event Slot</h4>
+                    <form method="POST">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+                            <div>
+                                <label>Date & Time</label>
+                                <input type="text" name="slot_time" placeholder="Jan 30, 07:00 PM" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <div>
+                                <label>Location</label>
+                                <input type="text" name="slot_location" placeholder="Chittagong Shilpakala" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
+                            <div>
+                                <label>Regular Seats (Qty)</label>
+                                <input type="number" name="cap_regular" value="300" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <div>
+                                <label>VIP Seats (Qty)</label>
+                                <input type="number" name="cap_vip" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <div>
+                                <label>Front Row (Qty)</label>
+                                <input type="number" name="cap_front" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                        </div>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
+                            <div>
+                                <label>Regular Price</label>
+                                <input type="number" name="price_regular" value="500" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <div>
+                                <label>VIP Price</label>
+                                <input type="number" name="price_vip" value="1000" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <div>
+                                <label>Front Row Price</label>
+                                <input type="number" name="price_front" value="200" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                        </div>
+                        <button type="submit" name="add_slot" class="btn-small">Create Slot</button>
+                    </form>
+                </div>
                 
-                <div style="display: grid; gap: 20px; margin-bottom: 30px;">
+                <!-- Existing Slots Grid -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
                     <?php foreach($SLOTS as $slot): ?>
                     <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
                         <!-- Header -->
@@ -551,97 +605,54 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
                     </div>
                     <?php endforeach; ?>
                 </div>
-
-                <h4 style="color: var(--primary); border-top: 1px solid var(--border); padding-top: 20px; margin-top: 20px;">Add New Slot</h4>
-                <form method="POST">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                        <div>
-                            <label>Date & Time</label>
-                            <input type="text" name="slot_time" placeholder="Jan 30, 07:00 PM" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <div>
-                            <label>Location</label>
-                            <input type="text" name="slot_location" placeholder="Chittagong Shilpakala" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-                        <div>
-                            <label>Regular Seats</label>
-                            <input type="number" name="cap_regular" value="300" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <div>
-                            <label>VIP Seats</label>
-                            <input type="number" name="cap_vip" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <div>
-                            <label>Front Row</label>
-                            <input type="number" name="cap_front" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                    </div>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 25px;">
-                        <div>
-                            <label>Regular Price</label>
-                            <input type="number" name="price_regular" value="500" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <div>
-                            <label>VIP Price</label>
-                            <input type="number" name="price_vip" value="1000" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <div>
-                            <label>Front Row Price</label>
-                            <input type="number" name="price_front" value="200" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                    </div>
-                    <button type="submit" name="add_slot" class="btn-small"><i class="fas fa-plus-circle"></i> Add Show Slot</button>
-                    <?php if(isset($_GET['success']) && $_GET['success'] === 'slot'): ?>
-                        <span style="color: var(--success); margin-left: 15px; font-size: 0.9rem;">Slot added!</span>
-                    <?php endif; ?>
-                </form>
             </div>
 
-            <div style="display: flex; flex-direction: column; gap: 30px;">
-                <div class="form-card">
-                    <h3>Add New Admin</h3>
-                    <form method="POST">
-                        <div style="margin-bottom: 15px;">
-                            <label>Username</label>
-                            <input type="text" name="new_username" placeholder="johndoe" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <div style="margin-bottom: 15px;">
-                            <label>Password</label>
-                            <input type="password" name="new_password" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                        </div>
-                        <button type="submit" name="add_user" class="btn-small"><i class="fas fa-user-plus"></i> Create User</button>
-                    </form>
-                </div>
-
-                <div class="form-card">
-                    <h3>Team</h3>
-                    <table style="background: transparent; box-shadow: none; margin: 0;">
-                        <tbody>
-                            <?php foreach($admins as $a): ?>
-                            <tr>
-                                <td style="padding: 10px 0; border: none;">
-                                    <i class="fas fa-user-circle" style="color: var(--primary);"></i>
-                                    <span style="margin-left: 10px;"><?php echo htmlspecialchars($a['username']); ?></span>
-                                    <?php if($a['username'] === $_SESSION['admin_user']): ?>
-                                    <span style="font-size: 0.75rem; color: var(--primary); margin-left: 5px;">(You)</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td style="padding: 10px 0; border: none; text-align: right;">
-                                    <?php if($a['username'] !== $_SESSION['admin_user']): ?>
-                                    <form method="POST" style="display:inline;" onsubmit="return confirm('Remove access for this user?');">
-                                        <input type="hidden" name="delete_user" value="<?php echo htmlspecialchars($a['username']); ?>">
-                                        <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer;">
-                                            <i class="fas fa-trash-alt"></i>
-                                        </button>
-                                    </form>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
+            <!-- 3. Admin User Management -->
+            <div class="form-card">
+                <h3>System Administrators</h3>
+                <div class="inline-form" style="display: flex; gap: 30px; align-items: flex-start;">
+                     <div style="flex: 1;">
+                        <h4 style="margin-top: 0; color: var(--text-dim);">Existing Users</h4>
+                        <table style="background: transparent; box-shadow: none; margin: 0; width: 100%;">
+                            <tbody>
+                                <?php foreach($admins as $a): ?>
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid var(--border);">
+                                        <i class="fas fa-user-circle" style="color: var(--primary);"></i>
+                                        <span style="margin-left: 10px;"><?php echo htmlspecialchars($a['username']); ?></span>
+                                        <?php if($a['username'] === $_SESSION['admin_user']): ?>
+                                        <span style="font-size: 0.75rem; color: var(--primary); margin-left: 5px;">(You)</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid var(--border); text-align: right;">
+                                        <?php if($a['username'] !== $_SESSION['admin_user']): ?>
+                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Remove access for this user?');">
+                                            <input type="hidden" name="delete_user" value="<?php echo htmlspecialchars($a['username']); ?>">
+                                            <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer;">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                     </div>
+                     <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 30px;">
+                        <h4 style="margin-top: 0; color: var(--text-dim);">Add New Admin</h4>
+                        <form method="POST">
+                            <div style="margin-bottom: 15px;">
+                                <label>Username</label>
+                                <input type="text" name="new_username" placeholder="johndoe" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <div style="margin-bottom: 15px;">
+                                <label>Password</label>
+                                <input type="password" name="new_password" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
+                            </div>
+                            <button type="submit" name="add_user" class="btn-small" style="width: 100%; justify-content: center;"><i class="fas fa-user-plus"></i> Create User</button>
+                        </form>
+                     </div>
                 </div>
             </div>
         </div>

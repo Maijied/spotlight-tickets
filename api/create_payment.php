@@ -4,7 +4,7 @@
  */
 
 require_once __DIR__ . '/../config/config.php';
-require_once __DIR__ . '/../includes/flexpay.php';
+require_once __DIR__ . '/../includes/LocalGateway.php';
 
 session_start();
 
@@ -24,6 +24,37 @@ $slot_id = filter_input(INPUT_POST, 'slot_id', FILTER_SANITIZE_SPECIAL_CHARS);
 
 if (!$full_name || !$email || !$phone_number || !isset($TICKET_TIERS[$ticket_type]) || $quantity < 1) {
     die("Error: Invalid booking information.");
+}
+// 1.5. Capacity Check (Real-time)
+require_once __DIR__ . '/../includes/db.php';
+$bookings = Database::getBookings();
+$sold_count = 0;
+foreach($bookings as $b) {
+    // Check if booking belongs to this slot and tier
+    // Note: DB stores tier Name (e.g. 'Regular Seat'), input is Key (e.g. 'regular')
+    $b_slot = $b['slot_id'] ?? 'slot_default';
+    $b_tier = $b['tier'] ?? '';
+    
+    if($b_slot === $slot_id && $b['status'] === 'confirmed') {
+        // Flexible matching since DB stores Name but we have Key
+        if (stripos($b_tier, $ticket_type) !== false) {
+             $sold_count += $b['quantity'];
+        }
+    }
+}
+
+// Find Capacity for requested slot/tier
+$tier_capacity = 0;
+foreach($SLOTS as $s) {
+    if($s['id'] === $slot_id) {
+        $tier_capacity = (int)($s['capacities'][$ticket_type] ?? 0);
+        break;
+    }
+}
+
+if (($sold_count + $quantity) > $tier_capacity) {
+    $remaining = max(0, $tier_capacity - $sold_count);
+    die("Error: Not enough seats available. Only $remaining seats left for this category.");
 }
 
 // 2. Server-side Price Calculation (Security)
