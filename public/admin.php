@@ -1,21 +1,22 @@
 <?php
 /**
- * Advanced Admin Dashboard with Search, Filters, Export, and Check-in System
+ * Professional Admin Dashboard
+ * Features: Sidebar navigation, Step-by-step workflow, Advanced filtering
  */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 
 session_start();
 
+// --- Auth Check ---
 Database::connect();
 $admins = Database::getAdmins();
 
-// --- Handle Login ---
+// Handle Login
 $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $user = $_POST['username'] ?? '';
     $pass = $_POST['password'] ?? '';
-
     foreach ($admins as $admin) {
         if ($admin['username'] === $user && password_verify($pass, $admin['password'])) {
             $_SESSION['admin_logged_in'] = true;
@@ -24,44 +25,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
             exit;
         }
     }
-    $error = 'Invalid username or password.';
+    $error = 'Invalid credentials.';
 }
 
-// --- Check Auth ---
 if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== true) {
     ?>
     <!DOCTYPE html>
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Login - Admin Dashboard</title>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+        <title>Login - Admin Portal</title>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
         <style>
-            body { background: #0f172a; color: #f8fafc; font-family: 'Outfit', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-            .login-card { background: #1e293b; padding: 40px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); width: 100%; max-width: 400px; border: 1px solid #334155; }
-            h1 { color: #8b5cf6; margin-bottom: 30px; text-align: center; }
-            .form-group { margin-bottom: 20px; }
-            label { display: block; margin-bottom: 8px; color: #94a3b8; font-size: 0.9rem; }
-            input { width: 100%; padding: 12px; background: #0f172a; border: 1px solid #334155; border-radius: 6px; color: #fff; box-sizing: border-box; }
-            .btn { width: 100%; padding: 14px; background: #8b5cf6; border: none; border-radius: 6px; color: #fff; font-weight: 600; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-            .btn:hover { background: #7c3aed; }
-            .error { color: #ef4444; background: rgba(239, 68, 68, 0.1); padding: 10px; border-radius: 6px; margin-bottom: 20px; text-align: center; border: 1px solid #ef4444; font-size: 0.9rem; }
+            body { background: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; display: flex; height: 100vh; align-items: center; justify-content: center; margin: 0; }
+            .login-box { background: #1e293b; padding: 40px; border-radius: 12px; width: 350px; border: 1px solid #334155; }
+            h2 { color: #8b5cf6; margin: 0 0 20px; text-align: center; font-weight: 600; }
+            input { width: 100%; padding: 12px; margin-bottom: 15px; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; }
+            button { width: 100%; padding: 12px; background: #8b5cf6; color: white; border: none; border-radius: 6px; font-weight: 600; cursor: pointer; }
+            button:hover { background: #7c3aed; }
+            .error { color: #ef4444; font-size: 0.85rem; text-align: center; margin-bottom: 15px; }
         </style>
     </head>
     <body>
-        <div class="login-card">
-            <h1>Admin Login</h1>
-            <?php if ($error): ?> <div class="error"><?php echo $error; ?></div> <?php endif; ?>
+        <div class="login-box">
+            <h2>Admin Login</h2>
+            <?php if($error): ?><div class="error"><?php echo $error; ?></div><?php endif; ?>
             <form method="POST">
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" required autofocus>
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" required>
-                </div>
-                <button type="submit" name="login" class="btn">Login</button>
+                <input type="text" name="username" placeholder="Username" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" name="login">Sign In</button>
             </form>
         </div>
     </body>
@@ -70,711 +62,531 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
-// --- Logged In Logic ---
+// --- Data Processing (Post Actions) ---
+$activeTab = $_GET['tab'] ?? 'dashboard';
 
-// --- Handle User Management ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Add User
-    if (isset($_POST['add_user'])) {
-        $new_user = trim($_POST['new_username']);
-        $new_password = $_POST['new_password'];
-        
-        // Check if exists
-        $exists = false;
-        foreach($admins as $a) { if($a['username'] === $new_user) $exists = true; }
-
-        if (!$exists && !empty($new_user) && !empty($new_password)) {
-            Database::saveAdmin($new_user, password_hash($new_password, PASSWORD_DEFAULT));
-            $admins = Database::getAdmins(); // Refresh list
-        }
+    // 1. Settings
+    if (isset($_POST['update_event_name'])) {
+        Database::updateEventName($_POST['event_name']);
+        $activeTab = 'events';
     }
     
-    // Delete User
-    if (isset($_POST['delete_user'])) {
-        $user_to_delete = $_POST['delete_user'];
-        // Don't delete self or last admin
-        if ($user_to_delete !== $_SESSION['admin_user'] && count($admins) > 1) {
-            Database::deleteAdmin($user_to_delete);
-            $admins = Database::getAdmins(); // Refresh list
-        }
-    }
-
-    // Update Settings
-    if (isset($_POST['update_settings'])) {
-        $new_name = $_POST['event_name'];
-        Database::updateEventName($new_name);
-        header('Location: admin.php?success=settings');
-        exit;
-    }
-
-    // Add Slot
+    // 2. Slots (Add)
     if (isset($_POST['add_slot'])) {
-        // We assume 'event_name' comes from config/general setting or just use current default.
-        // For simplicity, we fetch the current default name or use a placeholder.
-        $current_settings = Database::getSettings();
-        $evt_name = $current_settings['event_name'] ?? 'Siddhartha Live';
-        
-        // Convert date format if needed, but assuming user inputs valid datetime str or we parse it
-        // The input 'slot_time' is likely "Jan 30, 07:00 PM". MySQL needs "Y-m-d H:i:s".
-        $raw_time = $_POST['slot_time'];
-        $mysql_time = date('Y-m-d H:i:s', strtotime($raw_time));
-        
+        $datetime = date('Y-m-d H:i:s', strtotime($_POST['slot_time']));
         Database::addEvent(
-            $evt_name,
-            $mysql_time,
+            $datetime,
             $_POST['slot_location'],
-            (int)$_POST['cap_regular'],
-            (int)$_POST['cap_vip'],
-            (int)$_POST['cap_front']
+            ['regular' => (int)$_POST['cap_regular'], 'vip' => (int)$_POST['cap_vip'], 'front' => (int)$_POST['cap_front']],
+            ['regular' => (int)$_POST['price_regular'], 'vip' => (int)$_POST['price_vip'], 'front' => (int)$_POST['price_front']]
         );
-        
-        header('Location: admin.php?success=slot');
-        exit;
+        $activeTab = 'events';
     }
 
-    // Delete Slot
+    // 3. Slots (Delete)
     if (isset($_POST['delete_slot'])) {
-        $sid = $_POST['delete_slot'];
-        // $sid is like "slot_15". We need to extract ID 15.
-        if (strpos($sid, 'slot_') === 0) {
-            $db_id = substr($sid, 5); // remove 'slot_' prefix
-            Database::deleteEvent((int)$db_id);
-        }
-        
-        header('Location: admin.php?success=slot_deleted');
-        exit;
+        $idx = (int)$_POST['slot_index'];
+        Database::deleteEvent($idx);
+        $activeTab = 'events';
+    }
+
+    // 4. Admins
+    if (isset($_POST['add_admin'])) {
+        Database::saveAdmin($_POST['new_user'], password_hash($_POST['new_pass'], PASSWORD_DEFAULT));
+        $activeTab = 'admins';
+    }
+    if (isset($_POST['delete_admin'])) {
+        Database::deleteAdmin($_POST['del_user']);
+        $activeTab = 'admins';
     }
 }
 
+// --- Fetch Data ---
 $bookings = Database::getBookings();
-// Sort by date descending
-usort($bookings, function($a, $b) {
-    return strtotime($b['created_at']) <=> strtotime($a['created_at']);
-});
+$settings = Database::getSettings();
+$SLOTS = $settings['slots'] ?? [];
+$admins = Database::getAdmins();
 
-// Calculate Stats
+// Stats Calculation
+$pendingBookings = array_filter($bookings, fn($b) => ($b['status'] ?? 'confirmed') === 'pending');
+$totalSales = array_sum(array_column($bookings, 'amount'));
 $totalTickets = array_sum(array_column($bookings, 'quantity'));
-$TOTAL_CONFIGURED_CAPACITY = 0;
-foreach($SLOTS as $s) {
-    $TOTAL_CONFIGURED_CAPACITY += array_sum($s['capacities']);
-}
-$occupationRate = ($TOTAL_CONFIGURED_CAPACITY > 0) ? min(100, round(($totalTickets / $TOTAL_CONFIGURED_CAPACITY) * 100)) : 0;
+$totalCapacity = 0;
+foreach($SLOTS as $s) $totalCapacity += array_sum($s['capacities']);
 
-// Category & Slot Wise Stats
-$slotStats = []; // [slot_id] => [regular => X, vip => Y, ...]
-foreach($SLOTS as $s) {
-    $slotStats[$s['id']] = ['regular' => 0, 'vip' => 0, 'front' => 0];
-}
-
-foreach ($bookings as $b) {
-    $sid = $b['slot_id'] ?? 'slot_default';
-    if (!isset($slotStats[$sid])) $slotStats[$sid] = ['regular' => 0, 'vip' => 0, 'front' => 0];
-    
-    if (stripos($b['tier'], 'regular') !== false) $slotStats[$sid]['regular'] += $b['quantity'];
-    elseif (stripos($b['tier'], 'vip') !== false) $slotStats[$sid]['vip'] += $b['quantity'];
-    elseif (stripos($b['tier'], 'front') !== false) $slotStats[$sid]['front'] += $b['quantity'];
-}
-
-$totalRevenue = array_sum(array_column($bookings, 'amount'));
 $todaySales = 0;
 $today = date('Y-m-d');
-foreach ($bookings as $b) {
-    if (date('Y-m-d', strtotime($b['created_at'])) === $today) {
-        $todaySales += $b['amount'];
-    }
+foreach($bookings as $b) {
+    if(substr($b['created_at'], 0, 10) === $today) $todaySales += $b['amount'];
 }
-
-$tierCounts = array_count_values(array_column($bookings, 'tier'));
-arsort($tierCounts);
-$popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - <?php echo EVENT_NAME; ?></title>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>Siddhartha Admin</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --primary: #8b5cf6;
-            --primary-hover: #7c3aed;
-            --text: #f8fafc;
-            --text-dim: #94a3b8;
-            --border: #334155;
-            --success: #10b981;
-            --warning: #f59e0b;
-            --danger: #ef4444;
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: { 850: '#1e293b', 900: '#0f172a' },
+                        primary: '#8b5cf6',
+                        success: '#10b981',
+                        warning: '#f59e0b',
+                        danger: '#ef4444'
+                    },
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
+                }
+            }
         }
-
-        body { background: var(--bg); color: var(--text); font-family: 'Outfit', sans-serif; padding: 40px; margin: 0; }
-        .container { max-width: 1200px; margin: 0 auto; }
-        
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
-        h1 { color: var(--primary); margin: 0; font-size: 2rem; }
-        
-        .header-actions { display: flex; align-items: center; gap: 20px; }
-        .nav-links a { color: var(--text-dim); text-decoration: none; font-weight: 500; transition: 0.3s; }
-        .nav-links a:hover { color: var(--text); }
-        .btn-logout { color: var(--danger) !important; }
-
-        /* Stats Cards */
-        .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; margin-bottom: 40px; }
-        .stat-card { background: var(--card-bg); padding: 25px; border-radius: 16px; border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
-        .stat-card .label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-        .stat-card .value { font-size: 1.8rem; font-weight: 600; margin-top: 10px; color: var(--warning); }
-        .stat-card .icon { float: right; font-size: 2rem; color: var(--primary); opacity: 0.3; }
-
-        /* Capacity Progress Bar */
-        .capacity-bar { height: 8px; background: var(--bg); border-radius: 4px; margin-top: 15px; overflow: hidden; position: relative; }
-        .capacity-fill { height: 100%; background: linear-gradient(90deg, var(--primary), var(--success)); border-radius: 4px; transition: width 0.5s ease; }
-
-        /* Filters & Search */
-        .toolbar { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; }
-        .search-box { position: relative; flex-grow: 1; min-width: 300px; }
-        .search-box i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: var(--text-dim); }
-        .search-box input { width: 100%; padding: 12px 12px 12px 45px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff; box-sizing: border-box; }
-        
-        .filters { display: flex; gap: 15px; }
-        .filters select { padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff; cursor: pointer; }
-        
-        .btn-export { padding: 12px 20px; background: var(--success); border: none; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; gap: 8px; transition: 0.3s; }
-        .btn-export:hover { background: #059669; transform: translateY(-2px); }
-
-        /* Table Styles */
-        .table-container { background: var(--card-bg); border-radius: 16px; border: 1px solid var(--border); overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 18px; text-align: left; border-bottom: 1px solid var(--border); }
-        th { background: rgba(255,255,255,0.03); color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; }
-        tr:last-child td { border-bottom: none; }
-        tr:hover { background: rgba(255,255,255,0.02); }
-
-        .badge { padding: 6px 12px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; text-transform: capitalize; }
-        .badge-vip { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.3); }
-        .badge-premium { background: rgba(236, 72, 153, 0.15); color: #f472b6; border: 1px solid rgba(236,72,153,0.3); }
-        .badge-regular { background: rgba(139, 92, 246, 0.15); color: #a78bfa; border: 1px solid rgba(139,92,246,0.3); }
-
-        .status-tag { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 500; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
-        .status-pending { color: var(--warning); }
-        .status-pending .status-dot { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
-        .status-confirmed { color: var(--primary); }
-        .status-confirmed .status-dot { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
-        .status-checked-in { color: var(--success); }
-        .status-checked-in .status-dot { background: var(--success); box-shadow: 0 0 10px var(--success); }
-
-        .checkin-btn { padding: 6px 10px; background: var(--primary); border: none; border-radius: 4px; color: #fff; font-size: 0.75rem; cursor: pointer; transition: 0.2s; }
-        .checkin-btn:hover { background: var(--primary-hover); }
-        .checkin-btn.active { background: var(--success); }
-
-        /* User Management */
-        .section-title { margin-top: 60px; margin-bottom: 25px; display: flex; align-items: center; gap: 15px; }
-        .section-title h2 { margin: 0; color: var(--primary); font-size: 1.5rem; }
-        .section-title hr { flex-grow: 1; border: 0; border-top: 1px solid var(--border); }
-
-        .mgmt-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 30px; margin-bottom: 60px; }
-        .form-card { background: var(--card-bg); padding: 30px; border-radius: 16px; border: 1px solid var(--border); }
-        .form-card h3 { margin-top: 0; color: var(--primary); margin-bottom: 25px; }
-        
-        .inline-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 20px; align-items: end; }
-        .inline-form label { display: block; filter: brightness(0.8); margin-bottom: 8px; font-size: 0.85rem; }
-        .inline-form input { width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff; }
-        
-        .btn-small { padding: 12px 24px; background: var(--primary); border: none; border-radius: 8px; color: #fff; font-weight: 600; cursor: pointer; transition: 0.3s; }
-        .btn-small:hover { background: var(--primary-hover); transform: translateY(-2px); }
-        .btn-danger { background: var(--danger); }
-        .btn-danger:hover { background: #dc2626; }
-
-        @media (max-width: 768px) {
-            .toolbar { flex-direction: column; align-items: stretch; }
-            .mgmt-grid { grid-template-columns: 1fr; }
-            .inline-form { grid-template-columns: 1fr; }
+    </script>
+    <style type="text/tailwindcss">
+        @layer utilities {
+            .nav-item { @apply flex items-center gap-3 px-4 py-3 text-slate-400 rounded-lg transition-colors cursor-pointer hover:bg-slate-800 hover:text-white; }
+            .nav-item.active { @apply bg-primary/10 text-primary font-medium; }
+            .card { @apply bg-slate-800 rounded-xl border border-slate-700 p-6; }
+            .input-dark { @apply w-full bg-slate-900 border border-slate-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-primary transition-colors; }
+            .btn-primary { @apply px-4 py-2 bg-primary hover:bg-violet-600 text-white rounded-lg font-medium transition-colors; }
+            .btn-danger { @apply px-3 py-1 bg-red-500/10 text-red-500 border border-red-500/50 rounded hover:bg-red-500 hover:text-white transition-colors; }
         }
     </style>
 </head>
-<body>
-    <div class="container">
-        <header>
-            <div>
-                <h1>Sales Dashboard - <?php echo EVENT_NAME; ?></h1>
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 15px; color: var(--text-dim); font-size: 0.9rem;">
-                    <span><i class="fas fa-calendar-alt" style="color: var(--primary);"></i> <?php echo EVENT_DATE_TIME; ?></span>
-                    <span><i class="fas fa-map-marker-alt" style="color: var(--primary);"></i> <?php echo EVENT_LOCATION; ?></span>
-                </div>
-            </div>
-            <div class="header-actions">
-                <a href="../api/export_bookings.php" class="btn-export">
-                    <i class="fas fa-file-export"></i> Export CSV
-                </a>
-                <div class="nav-links">
-                    <a href="index.php" target="_blank"><i class="fas fa-external-link-alt"></i> Public Site</a>
-                    <a href="logout.php" class="btn-logout"><i class="fas fa-sign-out-alt"></i> Logout</a>
-                </div>
-            </div>
-        </header>
+<body class="bg-slate-900 text-slate-50 h-screen overflow-hidden flex">
 
-        <div class="stats">
-            <div class="stat-card">
-                <i class="fas fa-ticket-alt icon"></i>
-                <div class="label">Tickets Sold</div>
-                <div class="value"><?php echo count($bookings); ?></div>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-coins icon"></i>
-                <div class="label">Total Revenue</div>
-                <div class="value">BDT <?php echo number_format($totalRevenue, 2); ?></div>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-calendar-day icon"></i>
-                <div class="label">Today's Sales</div>
-                <div class="value" style="color: var(--success);">BDT <?php echo number_format($todaySales, 2); ?></div>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-users icon"></i>
-                <div class="label">Total Seat Fill-up</div>
-                <div class="value"><?php echo $totalTickets; ?> / <?php echo $TOTAL_CONFIGURED_CAPACITY; ?></div>
-                <div class="capacity-bar">
-                    <div class="capacity-fill" style="width: <?php echo $occupationRate; ?>%;"></div>
-                </div>
-                <div style="font-size: 0.75rem; color: var(--text-dim); margin-top: 5px;"><?php echo $occupationRate; ?>% Capacity Filled</div>
-            </div>
-            <div class="stat-card">
-                <i class="fas fa-star icon"></i>
-                <div class="label">Popular Tier</div>
-                <div class="value" style="color: var(--primary); font-size: 1.2rem; margin-top: 15px;">
-                    <?php echo htmlspecialchars($popularTier); ?>
-                </div>
-            </div>
+    <!-- Sidebar -->
+    <aside class="w-64 bg-slate-850 border-r border-slate-700 flex flex-col shrink-0 transition-all duration-300" id="sidebar">
+        <div class="p-6">
+            <h1 class="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                <i class="fas fa-theater-masks text-primary"></i>
+                <span class="sidebar-text">Siddhartha</span>
+            </h1>
+            <p class="text-xs text-slate-500 mt-1 sidebar-text">Admin Dashboard v2.0</p>
         </div>
 
-        <div class="section-title">
-            <h2>Slot-wise Seat Inventory</h2>
-            <hr>
-        </div>
+        <nav class="flex-1 px-3 space-y-1 overflow-y-auto">
+            <!-- Workflow Steps -->
+            <div class="px-4 py-2 text-xs font-semibold text-slate-500 uppercase tracking-wider sidebar-text">Step-by-Step Workflow</div>
+            
+            <a onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item">
+                <i class="fas fa-chart-pie w-5"></i> <span class="sidebar-text">Overview</span>
+            </a>
+            
+            <a onclick="switchTab('pending')" id="nav-pending" class="nav-item justify-between">
+                <div class="flex items-center gap-3"><i class="fas fa-clock w-5"></i> <span class="sidebar-text">Pending Approval</span></div>
+                <?php if(count($pendingBookings)>0): ?>
+                    <span class="bg-warning text-slate-900 text-xs font-bold px-2 py-0.5 rounded-full"><?php echo count($pendingBookings); ?></span>
+                <?php endif; ?>
+            </a>
 
-        <?php foreach($SLOTS as $slot): ?>
-        <div style="margin-bottom: 40px; border-left: 4px solid var(--primary); padding-left: 20px;">
-            <h3 style="color: var(--text); font-size: 1.1rem; margin-bottom: 15px;">
-                <i class="fas fa-clock" style="color: var(--primary);"></i> <?php echo htmlspecialchars($slot['time']); ?> 
-                <span style="margin-left: 10px; color: var(--text-dim); font-weight: normal; font-size: 0.9rem;">
-                    <i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($slot['location']); ?>
-                </span>
-            </h3>
-            <div class="stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
-                <?php foreach(['regular', 'vip', 'front'] as $cat): 
-                    $cap = $slot['capacities'][$cat] ?? 0;
-                    $sold = $slotStats[$slot['id']][$cat] ?? 0;
-                    $rate = ($cap > 0) ? min(100, round(($sold / $cap) * 100)) : 0;
-                ?>
-                <div class="stat-card" style="padding: 15px;">
-                    <div class="label"><?php echo ucfirst($cat); ?></div>
-                    <div class="value" style="font-size: 1.2rem;"><?php echo $sold; ?> / <?php echo $cap; ?></div>
-                    <div class="capacity-bar" style="height: 6px;">
-                        <div class="capacity-fill" style="width: <?php echo $rate; ?>%; background: <?php echo ($rate > 90) ? 'var(--danger)' : (($rate > 70) ? 'var(--warning)' : 'var(--success)'); ?>;"></div>
+            <a onclick="switchTab('events')" id="nav-events" class="nav-item">
+                <i class="fas fa-cogs w-5"></i> <span class="sidebar-text">Event & Slots</span>
+            </a>
+
+            <a onclick="switchTab('bookings')" id="nav-bookings" class="nav-item">
+                <i class="fas fa-ticket-alt w-5"></i> <span class="sidebar-text">All Bookings</span>
+            </a>
+
+            <!-- Divider -->
+            <div class="my-4 border-t border-slate-700"></div>
+
+            <a href="scan.php" target="_blank" class="nav-item">
+                <i class="fas fa-qrcode w-5"></i> <span class="sidebar-text">QR Scanner</span> <i class="fas fa-external-link-alt text-xs ml-auto opacity-50"></i>
+            </a>
+
+            <div class="px-4 py-2 mt-4 text-xs font-semibold text-slate-500 uppercase tracking-wider sidebar-text">System</div>
+            
+            <a onclick="switchTab('admins')" id="nav-admins" class="nav-item">
+                <i class="fas fa-users-cog w-5"></i> <span class="sidebar-text">Administrators</span>
+            </a>
+            
+            <a href="index.php" target="_blank" class="nav-item">
+                <i class="fas fa-globe w-5"></i> <span class="sidebar-text">View Live Site</span>
+            </a>
+        </nav>
+
+        <div class="p-4 border-t border-slate-700">
+            <a href="logout.php" class="flex items-center gap-2 text-red-400 hover:text-red-300 px-4 py-2 transition-colors">
+                <i class="fas fa-sign-out-alt"></i> <span class="sidebar-text">Sign Out</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 overflow-auto bg-slate-900 relative">
+        <div class="max-w-7xl mx-auto p-8">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-2xl font-bold">Dashboard Overview</h2>
+                    <p class="text-slate-400">Real-time insights and performance metrics.</p>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <!-- Stat Cards -->
+                    <div class="card">
+                        <div class="text-slate-400 text-sm font-medium uppercase">Total Revenue</div>
+                        <div class="text-3xl font-bold text-white mt-2">৳<?php echo number_format($totalSales); ?></div>
+                        <div class="text-xs text-slate-500 mt-1">Lifetime sales</div>
                     </div>
-                    <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 5px;"><?php echo $rate; ?>% Sold</div>
+                    <div class="card">
+                        <div class="text-slate-400 text-sm font-medium uppercase">Today's Sales</div>
+                        <div class="text-3xl font-bold text-success mt-2">৳<?php echo number_format($todaySales); ?></div>
+                        <div class="text-xs text-slate-500 mt-1">For <?php echo date('M d'); ?></div>
+                    </div>
+                    <div class="card">
+                        <div class="text-slate-400 text-sm font-medium uppercase">Tickets Sold</div>
+                        <div class="text-3xl font-bold text-white mt-2"><?php echo $totalTickets; ?></div>
+                        <div class="text-xs text-slate-500 mt-1">Across all slots</div>
+                    </div>
+                    <div class="card">
+                        <div class="text-slate-400 text-sm font-medium uppercase">Pending Actions</div>
+                        <div class="text-3xl font-bold text-warning mt-2"><?php echo count($pendingBookings); ?></div>
+                        <div class="text-xs text-slate-500 mt-1">Requires approval</div>
+                    </div>
                 </div>
-                <?php endforeach; ?>
-            </div>
-        </div>
-        <?php endforeach; ?>
 
-        <div class="toolbar">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="bookingSearch" placeholder="Search by name, email, or TXN ID..." onkeyup="filterTable()">
-            </div>
-            <div class="filters">
-                <select id="slotFilter" onchange="filterTable()">
-                    <option value="">All Slots</option>
-                    <?php foreach($SLOTS as $s): ?>
-                        <option value="<?php echo $s['id']; ?>"><?php echo htmlspecialchars($s['time']); ?></option>
-                    <?php endforeach; ?>
-                </select>
-                <select id="tierFilter" onchange="filterTable()">
-                    <option value="">All Tiers</option>
-                    <option value="Regular">Regular</option>
-                    <option value="VIP">VIP</option>
-                    <option value="Front">Front Row</option>
-                </select>
-                <select id="statusFilter" onchange="filterTable()">
-                    <option value="">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="confirmed">Confirmed</option>
-                    <option value="checked-in">Checked-In</option>
-                </select>
-            </div>
-        </div>
-
-        <div class="table-container">
-            <table id="bookingsTable">
-                <thead>
-                    <tr>
-                        <th>Booking Date</th>
-                        <th>Show Timing</th>
-                        <th>Customer Details</th>
-                        <th>Tier</th>
-                        <th>Qty</th>
-                        <th>Amount</th>
-                        <th>Status</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($bookings as $b): ?>
-                    <tr data-tier="<?php echo htmlspecialchars($b['tier']); ?>" data-status="<?php echo htmlspecialchars($b['status'] ?? 'confirmed'); ?>" data-slot="<?php echo htmlspecialchars($b['slot_id'] ?? 'slot_default'); ?>">
-                        <td style="font-size: 0.85rem; color: var(--text-dim);">
-                            <?php echo date('M d, Y', strtotime($b['created_at'])); ?><br>
-                            <span style="font-size: 0.75rem;"><?php echo date('H:i', strtotime($b['created_at'])); ?></span>
-                        </td>
-                        <td style="font-size: 0.85rem;">
-                            <?php 
-                                $s_id = $b['slot_id'] ?? 'slot_default';
-                                $s_info = array_filter($SLOTS, function($s) use ($s_id) { return $s['id'] === $s_id; });
-                                $s_info = reset($s_info);
-                                echo $s_info ? htmlspecialchars($s_info['time']) : 'Default Slot';
-                            ?><br>
-                            <span style="font-size: 0.75rem; color: var(--text-dim);"><?php echo $s_info ? htmlspecialchars($s_info['location']) : 'N/A'; ?></span>
-                        </td>
-                        <td>
-                            <div style="font-weight: 600;"><?php echo htmlspecialchars($b['name']); ?></div>
-                            <div style="font-size: 0.8rem; color: var(--text-dim);"><?php echo htmlspecialchars($b['email']); ?></div>
-                            <div style="font-size: 0.8rem; color: var(--text-dim);"><?php echo htmlspecialchars($b['phone']); ?></div>
-                        </td>
-                        <td><span class="badge badge-<?php echo htmlspecialchars(strtolower(explode(' ', $b['tier'])[0])); ?>"><?php echo htmlspecialchars($b['tier']); ?></span></td>
-                        <td style="text-align: center; font-weight: 600;"><?php echo (int)$b['quantity']; ?></td>
-                        <td style="font-weight: 600;">৳<?php echo number_format((float)$b['amount'], 0); ?></td>
-                        <td>
-                            <?php $s = $b['status'] ?? 'confirmed'; ?>
-                            <span class="status-tag status-<?php echo $s; ?>" id="status-tag-<?php echo $b['txnid']; ?>">
-                                <span class="status-dot"></span>
-                                <span><?php echo ucfirst($s); ?></span>
-                            </span>
-                        </td>
-                        <td>
-                            <button class="checkin-btn <?php echo ($s === 'checked-in') ? 'active' : ''; ?>" 
-                                    onclick="toggleCheckIn('<?php echo $b['txnid']; ?>', this)">
-                                <i class="fas fa-<?php echo ($s === 'checked-in') ? 'undo' : 'check-circle'; ?>"></i>
-                                <span><?php echo ($s === 'checked-in') ? 'Revert' : 'Check-In'; ?></span>
-                            </button>
-                        </td>
-                    </tr>
-                    <?php endforeach; ?>
-                    <?php if(empty($bookings)): ?>
-                    <tr>
-                        <td colspan="7" style="text-align: center; padding: 60px; color: var(--text-dim);">
-                            <i class="fas fa-folder-open" style="font-size: 3rem; margin-bottom: 15px; display: block; opacity: 0.2;"></i>
-                            No bookings found yet.
-                        </td>
-                    </tr>
-                    <?php endif; ?>
-                </tbody>
-            </table>
-        </div>
-
-        <div class="admin-header">
-        <h2>System Administrators & Event Settings</h2>
-        <div style="display: flex; gap: 15px;">
-            <a href="scan.php" target="_blank" style="background: #E91E63; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: flex; align-items: center;">
-                <i class="fas fa-qrcode" style="margin-right: 8px;"></i> Scan Tickets
-            </a>
-            <a href="logout.php" style="color: #ef4444; text-decoration: none; padding: 10px; border: 1px solid #ef4444; border-radius: 6px; display: flex; align-items: center;">
-                <i class="fas fa-sign-out-alt" style="margin-right: 5px;"></i> Logout
-            </a>
-        </div>
-    </div>        
-            <!-- 0. PENDING PAYMENTS (Priority) -->
-            <?php
-            $all_bookings = Database::getBookings();
-            $pending = array_filter($all_bookings, function($b) { return $b['status'] === 'pending'; });
-            if (count($pending) > 0):
-            ?>
-            <div class="form-card" style="border: 2px solid #fbbf24; background: rgba(251, 191, 36, 0.05);">
-                <h3 style="color: #fbbf24;"><i class="fas fa-clock"></i> Pending Payment Approvals</h3>
-                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-                    <thead>
-                        <tr style="text-align: left; border-bottom: 1px solid var(--border); color: var(--text-dim);">
-                            <th style="padding: 10px;">Name/Phone</th>
-                            <th style="padding: 10px;">Ticket Details</th>
-                            <th style="padding: 10px;">Txn ID (Verify This)</th>
-                            <th style="padding: 10px; text-align: right;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach($pending as $p): ?>
-                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
-                            <td style="padding: 12px 10px;">
-                                <div style="font-weight: bold;"><?php echo htmlspecialchars($p['name']); ?></div>
-                                <div style="font-size: 0.85rem; color: var(--text-dim);"><?php echo htmlspecialchars($p['phone']); ?></div>
-                            </td>
-                            <td style="padding: 12px 10px;">
-                                <div><?php echo htmlspecialchars($p['tier']); ?> x <?php echo $p['quantity']; ?></div>
-                                <div style="font-size: 0.85rem; color: var(--primary);"><?php echo $p['amount']; ?>k BDT</div>
-                            </td>
-                            <td style="padding: 12px 10px;">
-                                <div style="font-family: monospace; font-size: 1.1rem; color: #fbbf24; letter-spacing: 1px;">
-                                    <?php echo htmlspecialchars($p['txnid']); ?>
-                                </div>
-                            </td>
-                            <td style="padding: 12px 10px; text-align: right;">
-                                <form action="../api/admin_approve.php" method="POST" style="display: inline;">
-                                    <input type="hidden" name="txn_id" value="<?php echo $p['txnid']; ?>">
-                                    <button type="submit" style="background: #10b981; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
-                                        <i class="fas fa-check"></i> Confirm
-                                    </button>
-                                </form>
-                            </td>
-                        </tr>
+                <!-- Capacity Visuals -->
+                <div class="card mb-8">
+                    <h3 class="text-lg font-bold mb-4">Slot Capacity Status</h3>
+                    <div class="space-y-6">
+                        <?php foreach($SLOTS as $s): 
+                            $sold = 0; // simple calculation needed per slot
+                            // Calculate sold per slot
+                            $thisSlotSold = 0;
+                            foreach($bookings as $b) {
+                                if(($b['slot_id'] ?? '') == $s['id']) $thisSlotSold += $b['quantity'];
+                            }
+                            $slotCap = array_sum($s['capacities']);
+                            $pct = ($slotCap > 0) ? round(($thisSlotSold/$slotCap)*100) : 0;
+                        ?>
+                        <div>
+                            <div class="flex justify-between mb-2">
+                                <span class="font-medium"><?php echo htmlspecialchars($s['time']); ?></span>
+                                <span class="text-sm text-slate-400"><?php echo $thisSlotSold; ?> / <?php echo $slotCap; ?> (<?php echo $pct; ?>%)</span>
+                            </div>
+                            <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+                                <div class="h-full bg-primary transition-all duration-1000" style="width: <?php echo $pct; ?>%"></div>
+                            </div>
+                        </div>
                         <?php endforeach; ?>
-                    </tbody>
-                </table>
+                    </div>
+                </div>
             </div>
-            <?php endif; ?>
 
-            <!-- 1. Event Name Section -->
-            <div class="form-card">
-                <h3>Event Name</h3>
-                <form method="POST" style="display: flex; gap: 15px;">
-                    <input type="text" name="event_name" value="<?php echo htmlspecialchars(EVENT_NAME); ?>" required style="flex-grow: 1; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                    <button type="submit" name="update_settings" class="btn-small"><i class="fas fa-save"></i> Update Name</button>
-                    <?php if(isset($_GET['success']) && $_GET['success'] === 'settings'): ?>
-                        <span style="color: var(--success); align-self: center;">Updated!</span>
+            <!-- Pending Approvals View -->
+            <div id="view-pending" class="view-section hidden">
+                <header class="mb-8 flex justify-between items-center">
+                    <div>
+                        <h2 class="text-2xl font-bold text-warning"><i class="fas fa-clock mr-2"></i>Pending Approvals</h2>
+                        <p class="text-slate-400">Verify bKash transactions and confirm bookings.</p>
+                    </div>
+                </header>
+
+                <div class="card overflow-hidden p-0">
+                    <?php if(empty($pendingBookings)): ?>
+                        <div class="p-12 text-center text-slate-500">
+                            <i class="fas fa-check-circle text-4xl mb-4 text-slate-600"></i>
+                            <p>All caught up! No pending bookings.</p>
+                        </div>
+                    <?php else: ?>
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-900/50 border-b border-slate-700 text-xs uppercase text-slate-400">
+                                    <th class="p-4">Customer</th>
+                                    <th class="p-4">Transaction ID</th>
+                                    <th class="p-4">Amount</th>
+                                    <th class="p-4 text-right">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700">
+                                <?php foreach($pendingBookings as $p): ?>
+                                <tr class="hover:bg-slate-700/30 transition-colors">
+                                    <td class="p-4">
+                                        <div class="font-bold text-white"><?php echo htmlspecialchars($p['full_name']); ?></div>
+                                        <div class="text-sm text-slate-400"><?php echo htmlspecialchars($p['phone']); ?></div>
+                                    </td>
+                                    <td class="p-4">
+                                        <code class="bg-slate-900 px-2 py-1 rounded text-warning font-mono"><?php echo htmlspecialchars($p['txnid']); ?></code>
+                                    </td>
+                                    <td class="p-4 font-bold">
+                                        ৳<?php echo number_format($p['amount']); ?>
+                                        <div class="text-xs text-slate-500"><?php echo $p['quantity']; ?> tickets</div>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <button onclick="updateStatus('<?php echo $p['txnid']; ?>', 'confirmed', this)" 
+                                                class="bg-success hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-lg shadow-emerald-900/20 transition-all">
+                                            <i class="fas fa-check mr-1"></i> Approve
+                                        </button>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
                     <?php endif; ?>
-                </form>
+                </div>
             </div>
 
-            <!-- 2. Slot Management Section (Full Width) -->
-            <div class="form-card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px;">
-                    <h3 style="margin: 0;">Manage Show Slots</h3>
-                    <button onclick="document.getElementById('addSlotForm').style.display = document.getElementById('addSlotForm').style.display === 'none' ? 'block' : 'none'" class="btn-small">
-                        <i class="fas fa-plus-circle"></i> Add New Slot
-                    </button>
-                </div>
-
-                <!-- Add Slot Form (Hidden by default or Toggled) -->
-                <div id="addSlotForm" style="display: none; background: rgba(0,0,0,0.2); padding: 20px; border-radius: 12px; margin-bottom: 30px; border: 1px solid var(--primary);">
-                    <h4 style="color: var(--primary); margin-top: 0;">Create New Event Slot</h4>
-                    <form method="POST">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-                            <div>
-                                <label>Date & Time</label>
-                                <input type="text" name="slot_time" placeholder="Jan 30, 07:00 PM" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <div>
-                                <label>Location</label>
-                                <input type="text" name="slot_location" placeholder="Chittagong Shilpakala" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
-                            <div>
-                                <label>Regular Seats (Qty)</label>
-                                <input type="number" name="cap_regular" value="300" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <div>
-                                <label>VIP Seats (Qty)</label>
-                                <input type="number" name="cap_vip" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <div>
-                                <label>Front Row (Qty)</label>
-                                <input type="number" name="cap_front" value="100" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 25px;">
-                            <div>
-                                <label>Regular Price</label>
-                                <input type="number" name="price_regular" value="500" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <div>
-                                <label>VIP Price</label>
-                                <input type="number" name="price_vip" value="1000" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <div>
-                                <label>Front Row Price</label>
-                                <input type="number" name="price_front" value="200" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                        </div>
-                        <button type="submit" name="add_slot" class="btn-small">Create Slot</button>
-                    </form>
-                </div>
+            <!-- Events & Slots View -->
+            <div id="view-events" class="view-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-2xl font-bold">Event & Slot Settings</h2>
+                    <p class="text-slate-400">Manage global event details and show timings.</p>
+                </header>
                 
-                <!-- Existing Slots Grid -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
-                    <?php foreach($SLOTS as $slot): ?>
-                    <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-                        <!-- Header -->
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
-                            <div>
-                                <div style="font-size: 1.1rem; font-weight: 600; color: #fff; margin-bottom: 5px;">
-                                    <i class="fas fa-calendar-alt" style="color: var(--primary); margin-right: 8px;"></i>
-                                    <?php echo htmlspecialchars($slot['time']); ?>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Global Settings -->
+                    <div class="lg:col-span-1 space-y-8">
+                        <div class="card">
+                            <h3 class="text-lg font-bold mb-4">Event Details</h3>
+                            <form method="POST" class="space-y-4">
+                                <div>
+                                    <label class="block text-sm text-slate-400 mb-1">Event Name</label>
+                                    <input type="text" name="event_name" value="<?php echo htmlspecialchars($settings['event_name']); ?>" class="input-dark">
                                 </div>
-                                <div style="font-size: 0.9rem; color: var(--text-dim);">
-                                    <i class="fas fa-map-marker-alt" style="margin-right: 8px;"></i>
-                                    <?php echo htmlspecialchars($slot['location']); ?>
-                                </div>
-                            </div>
-                            <form method="POST" onsubmit="return confirm('Delete this slot? This will NOT delete existing bookings.');">
-                                <input type="hidden" name="delete_slot" value="<?php echo $slot['id']; ?>">
-                                <button type="submit" style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
-                                    <i class="fas fa-trash-alt"></i>
-                                </button>
+                                <button type="submit" name="update_event_name" class="btn-primary w-full">Save Changes</button>
                             </form>
                         </div>
 
-                        <!-- Stats Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
-                            <?php 
-                            $types = [
-                                'regular' => ['label' => 'Regular', 'color' => '#a78bfa'],
-                                'vip' => ['label' => 'VIP', 'color' => '#fbbf24'],
-                                'front' => ['label' => 'Front', 'color' => '#f472b6']
-                            ];
-                            foreach($types as $key => $meta): 
-                                $cap = $slot['capacities'][$key] ?? 0;
-                                $sold = $slotStats[$slot['id']][$key] ?? 0;
-                                $available = max(0, $cap - $sold);
-                                $percent = ($cap > 0) ? round(($sold / $cap) * 100) : 0;
-                            ?>
-                            <div style="text-align: center;">
-                                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;"><?php echo $meta['label']; ?></div>
-                                <div style="font-size: 1.2rem; font-weight: 700; color: <?php echo $meta['color']; ?>;">
-                                    <?php echo $available; ?>
-                                    <span style="font-size: 0.8rem; color: var(--text-dim); font-weight: 400;">/ <?php echo $cap; ?></span>
+                        <div class="card bg-slate-800/50 border-dashed">
+                             <h3 class="text-lg font-bold mb-4">Add New Slot</h3>
+                             <form method="POST" class="space-y-3">
+                                <input type="text" name="slot_time" placeholder="Date (e.g. 25 Jan 2026 18:30)" required class="input-dark">
+                                <input type="text" name="slot_location" placeholder="Location" required class="input-dark">
+                                
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div><label class="text-xs">Reg Qty</label><input type="number" name="cap_regular" value="300" class="input-dark text-xs p-1"></div>
+                                    <div><label class="text-xs">VIP Qty</label><input type="number" name="cap_vip" value="100" class="input-dark text-xs p-1"></div>
+                                    <div><label class="text-xs">Frt Qty</label><input type="number" name="cap_front" value="100" class="input-dark text-xs p-1"></div>
                                 </div>
-                                <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 2px;">
-                                    <?php echo ($slot['prices'][$key] ?? 0); ?>৳
+                                <div class="grid grid-cols-3 gap-2">
+                                    <div><label class="text-xs">Reg $</label><input type="number" name="price_regular" value="500" class="input-dark text-xs p-1"></div>
+                                    <div><label class="text-xs">VIP $</label><input type="number" name="price_vip" value="1200" class="input-dark text-xs p-1"></div>
+                                    <div><label class="text-xs">Frt $</label><input type="number" name="price_front" value="2500" class="input-dark text-xs p-1"></div>
                                 </div>
-                                <!-- Micro Progress Bar -->
-                                <div style="height: 3px; background: rgba(255,255,255,0.1); margin-top: 8px; border-radius: 2px; overflow: hidden;">
-                                    <div style="height: 100%; width: <?php echo $percent; ?>%; background: <?php echo $meta['color']; ?>;"></div>
-                                </div>
-                            </div>
-                            <?php endforeach; ?>
+
+                                <button type="submit" name="add_slot" class="btn-primary w-full mt-2"><i class="fas fa-plus mr-1"></i> Add Slot</button>
+                             </form>
                         </div>
                     </div>
-                    <?php endforeach; ?>
+
+                    <!-- Slot List -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <h3 class="text-lg font-bold">Active Slots</h3>
+                        <?php if(empty($SLOTS)): ?>
+                            <div class="p-8 text-center border border-slate-700 border-dashed rounded-xl text-slate-500">No slots configured.</div>
+                        <?php endif; ?>
+                        
+                        <?php foreach($SLOTS as $idx => $s): ?>
+                        <div class="card flex justify-between items-start group hover:border-slate-500 transition-colors">
+                            <div>
+                                <h4 class="text-xl font-bold text-white"><?php echo htmlspecialchars($s['time']); ?></h4>
+                                <p class="text-slate-400 text-sm mb-4"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($s['location']); ?></p>
+                                
+                                <div class="flex gap-4 text-sm">
+                                    <div class="bg-slate-900 px-3 py-1 rounded border border-slate-700">
+                                        <span class="text-primary font-bold">Regular</span> 
+                                        <span class="text-slate-400 ml-1"><?php echo $s['capacities']['regular']; ?> seats</span>
+                                    </div>
+                                    <div class="bg-slate-900 px-3 py-1 rounded border border-slate-700">
+                                        <span class="text-warning font-bold">VIP</span> 
+                                        <span class="text-slate-400 ml-1"><?php echo $s['capacities']['vip']; ?> seats</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <form method="POST" onsubmit="return confirm('Delete this slot? Data will remain but slot will be gone.');">
+                                <input type="hidden" name="slot_index" value="<?php echo $idx; ?>">
+                                <button type="submit" name="delete_slot" class="text-slate-600 hover:text-red-500 p-2 transition-colors"><i class="fas fa-trash"></i></button>
+                            </form>
+                        </div>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
             </div>
 
-            <!-- 3. Admin User Management -->
-            <div class="form-card">
-                <h3>System Administrators</h3>
-                <div class="inline-form" style="display: flex; gap: 30px; align-items: flex-start;">
-                     <div style="flex: 1;">
-                        <h4 style="margin-top: 0; color: var(--text-dim);">Existing Users</h4>
-                        <table style="background: transparent; box-shadow: none; margin: 0; width: 100%;">
-                            <tbody>
-                                <?php foreach($admins as $a): ?>
-                                <tr>
-                                    <td style="padding: 10px 0; border-bottom: 1px solid var(--border);">
-                                        <i class="fas fa-user-circle" style="color: var(--primary);"></i>
-                                        <span style="margin-left: 10px;"><?php echo htmlspecialchars($a['username']); ?></span>
-                                        <?php if($a['username'] === $_SESSION['admin_user']): ?>
-                                        <span style="font-size: 0.75rem; color: var(--primary); margin-left: 5px;">(You)</span>
-                                        <?php endif; ?>
+            <!-- All Bookings View -->
+            <div id="view-bookings" class="view-section hidden">
+                <header class="mb-8 flex flex-col md:flex-row md:justify-between md:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold">All Bookings</h2>
+                        <p class="text-slate-400">Search and manage all ticket sales.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="text" id="searchInput" onkeyup="filterTable()" placeholder="Search bookings..." class="input-dark w-64">
+                         <a href="../api/export_bookings.php" class="btn-primary"><i class="fas fa-download mr-1"></i> Export CSV</a>
+                    </div>
+                </header>
+
+                <div class="card p-0 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse" id="bookingsTable">
+                            <thead>
+                                <tr class="bg-slate-900/50 border-b border-slate-700 text-xs uppercase text-slate-400">
+                                    <th class="p-4">Date</th>
+                                    <th class="p-4">Customer</th>
+                                    <th class="p-4">Ticket Info</th>
+                                    <th class="p-4">Status</th>
+                                    <th class="p-4 text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-700">
+                                <?php foreach($bookings as $b): 
+                                    $statusColor = match($b['status'] ?? 'pending') {
+                                        'confirmed' => 'text-success bg-success/10',
+                                        'pending' => 'text-warning bg-warning/10',
+                                        'checked-in' => 'text-blue-400 bg-blue-400/10',
+                                        default => 'text-slate-400'
+                                    };
+                                ?>
+                                <tr class="hover:bg-slate-700/30 transition-colors booking-row" data-search="<?php echo strtolower($b['full_name'] . ' ' . $b['phone'] . ' ' . $b['txnid']); ?>">
+                                    <td class="p-4 text-sm text-slate-400">
+                                        <?php echo date('M d, H:i', strtotime($b['created_at'])); ?>
                                     </td>
-                                    <td style="padding: 10px 0; border-bottom: 1px solid var(--border); text-align: right;">
-                                        <?php if($a['username'] !== $_SESSION['admin_user']): ?>
-                                        <form method="POST" style="display:inline;" onsubmit="return confirm('Remove access for this user?');">
-                                            <input type="hidden" name="delete_user" value="<?php echo htmlspecialchars($a['username']); ?>">
-                                            <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer;">
-                                                <i class="fas fa-trash-alt"></i>
+                                    <td class="p-4">
+                                        <div class="font-bold text-white"><?php echo htmlspecialchars($b['full_name']); ?></div>
+                                        <div class="text-sm text-slate-500"><?php echo htmlspecialchars($b['phone']); ?></div>
+                                    </td>
+                                    <td class="p-4">
+                                        <div class="text-sm"><span class="text-white font-medium"><?php echo $b['quantity']; ?>x</span> <?php echo ucfirst($b['tier']); ?></div>
+                                        <div class="text-xs text-slate-500 font-mono mt-1"><?php echo $b['txnid']; ?></div>
+                                    </td>
+                                    <td class="p-4">
+                                        <span class="px-2 py-1 rounded text-xs font-bold uppercase <?php echo $statusColor; ?>">
+                                            <?php echo $b['status'] ?? 'pending'; ?>
+                                        </span>
+                                    </td>
+                                    <td class="p-4 text-right">
+                                        <?php if(($b['status']??'') !== 'checked-in'): ?>
+                                            <button onclick="updateStatus('<?php echo $b['txnid']; ?>', 'checked-in', this)" class="text-blue-400 hover:bg-blue-400/10 px-3 py-1 rounded border border-blue-400/30 text-xs transition-colors">
+                                                Check In
                                             </button>
-                                        </form>
+                                        <?php else: ?>
+                                            <span class="text-slate-500 text-xs italic">Checked In</span>
                                         <?php endif; ?>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
-                     </div>
-                     <div style="flex: 1; border-left: 1px solid var(--border); padding-left: 30px;">
-                        <h4 style="margin-top: 0; color: var(--text-dim);">Add New Admin</h4>
-                        <form method="POST">
-                            <div style="margin-bottom: 15px;">
-                                <label>Username</label>
-                                <input type="text" name="new_username" placeholder="johndoe" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <div style="margin-bottom: 15px;">
-                                <label>Password</label>
-                                <input type="password" name="new_password" required style="width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: #fff;">
-                            </div>
-                            <button type="submit" name="add_user" class="btn-small" style="width: 100%; justify-content: center;"><i class="fas fa-user-plus"></i> Create User</button>
-                        </form>
-                     </div>
+                    </div>
                 </div>
             </div>
+
+            <!-- Admins View -->
+            <div id="view-admins" class="view-section hidden">
+                 <header class="mb-8">
+                    <h2 class="text-2xl font-bold">Administrator Management</h2>
+                    <p class="text-slate-400">Manage access to the admin portal.</p>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="card">
+                        <h3 class="font-bold mb-4 border-b border-slate-700 pb-2">Existing Admins</h3>
+                        <ul class="space-y-3">
+                            <?php foreach($admins as $u => $p): ?>
+                            <li class="flex justify-between items-center bg-slate-900 p-3 rounded-lg border border-slate-700">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center text-primary"><i class="fas fa-user-shield"></i></div>
+                                    <span class="font-medium"><?php echo htmlspecialchars($u); ?></span>
+                                </div>
+                                <?php if($u !== $_SESSION['admin_user']): ?>
+                                <form method="POST" onsubmit="return confirm('Delete user?');">
+                                    <input type="hidden" name="del_user" value="<?php echo $u; ?>">
+                                    <button type="submit" name="delete_admin" class="text-slate-500 hover:text-red-500 transition-colors"><i class="fas fa-trash"></i></button>
+                                </form>
+                                <?php else: ?>
+                                    <span class="text-xs text-primary bg-primary/10 px-2 py-1 rounded">You</span>
+                                <?php endif; ?>
+                            </li>
+                            <?php endforeach; ?>
+                        </ul>
+                    </div>
+                    
+                    <div class="card bg-slate-800/50 border-dashed h-fit">
+                        <h3 class="font-bold mb-4">Add New Admin</h3>
+                        <form method="POST" class="space-y-4">
+                            <input type="text" name="new_user" placeholder="Username" required class="input-dark">
+                            <input type="password" name="new_pass" placeholder="Password" required class="input-dark">
+                            <button type="submit" name="add_admin" class="btn-primary w-full">Create Account</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
         </div>
-    </div>
+    </main>
 
     <script>
-        function filterTable() {
-            const input = document.getElementById("bookingSearch");
-            const filter = input.value.toLowerCase();
-            const tierFilter = document.getElementById("tierFilter").value.toLowerCase();
-            const statusFilter = document.getElementById("statusFilter").value.toLowerCase();
-            const slotFilter = document.getElementById("slotFilter").value;
-            const table = document.getElementById("bookingsTable");
-            const tr = table.getElementsByTagName("tr");
+        // Tab Handling
+        function switchTab(tabId) {
+            // Update Menu
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('nav-' + tabId).classList.add('active');
 
-            for (let i = 1; i < tr.length; i++) {
-                const tdText = tr[i].innerText.toLowerCase();
-                const tier = tr[i].getAttribute("data-tier").toLowerCase();
-                const status = tr[i].getAttribute("data-status").toLowerCase();
-                const slot = tr[i].getAttribute("data-slot");
+            // Update View
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-' + tabId).classList.remove('hidden');
+            
+            // Save state
+            history.pushState(null, '', '?tab=' + tabId);
 
-                let matchesSearch = tdText.indexOf(filter) > -1;
-                let matchesTier = !tierFilter || tier.indexOf(tierFilter) > -1;
-                let matchesStatus = !statusFilter || status === statusFilter;
-                let matchesSlot = !slotFilter || slot === slotFilter;
-
-                if (matchesSearch && matchesTier && matchesStatus && matchesSlot) {
-                    tr[i].style.display = "";
-                } else {
-                    tr[i].style.display = "none";
-                }
-            }
+            // Responsive Sidebar close (optional if we add mobile toggle)
         }
 
-        async function toggleCheckIn(txnid, btn) {
-            const isCheckedIn = btn.classList.contains('active');
-            const newStatus = isCheckedIn ? 'confirmed' : 'checked-in';
-            const icon = btn.querySelector('i');
-            const span = btn.querySelector('span');
-            const statusTag = document.getElementById(`status-tag-${txnid}`);
+        // Initialize from URL
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const tab = params.get('tab') || 'dashboard';
+            if(document.getElementById('view-' + tab)) {
+                switchTab(tab);
+            } else {
+                switchTab('dashboard');
+            }
+        });
 
+        // Search Filter
+        function filterTable() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            document.querySelectorAll('.booking-row').forEach(row => {
+                const text = row.getAttribute('data-search');
+                if(text.includes(query)) row.style.display = '';
+                else row.style.display = 'none';
+            });
+        }
+
+        // Async Status Update
+        async function updateStatus(txnid, status, btn) {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             btn.disabled = true;
             
             try {
+                const formData = new FormData();
+                formData.append('txnid', txnid);
+                formData.append('status', status);
+                
                 const response = await fetch('../api/update_status.php', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `txnid=${txnid}&status=${newStatus}`
+                    body: new URLSearchParams(formData)
                 });
-                
                 const res = await response.json();
                 
-                if (res.success) {
-                    btn.classList.toggle('active');
-                    icon.className = isCheckedIn ? 'fas fa-check-circle' : 'fas fa-undo';
-                    span.innerText = isCheckedIn ? 'Check-In' : 'Revert';
-                    
-                    // Update Row Attribute
-                    btn.closest('tr').setAttribute('data-status', newStatus);
-                    
-                    // Update Status Tag UI
-                    statusTag.className = `status-tag status-${newStatus}`;
-                    statusTag.querySelector('span:last-child').innerText = newStatus.charAt(0).toUpperCase() + newStatus.slice(1);
+                if(res.success) {
+                    location.reload(); // Reload to refresh stats and move items
                 } else {
-                    alert('Status update failed: ' + (res.message || 'Unknown error'));
+                    alert('Error: ' + (res.message || 'Failed'));
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
                 }
-            } catch (error) {
-                alert('Network error while updating status');
-            } finally {
+            } catch(e) {
+                alert('Connection error');
+                btn.innerHTML = originalText;
                 btn.disabled = false;
             }
         }
