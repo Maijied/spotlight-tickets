@@ -495,24 +495,59 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             <div class="form-card">
                 <h3>Manage Show Slots</h3>
                 
-                <div style="margin-bottom: 30px;">
+                <div style="display: grid; gap: 20px; margin-bottom: 30px;">
                     <?php foreach($SLOTS as $slot): ?>
-                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 10px;">
-                        <div>
-                            <div style="font-weight: 600;"><?php echo htmlspecialchars($slot['time']); ?></div>
-                            <div style="font-size: 0.85rem; color: var(--text-dim);"><?php echo htmlspecialchars($slot['location']); ?></div>
-                            <div style="font-size: 0.8rem; margin-top: 5px; color: var(--primary);">
-                                Reg: <?php echo $slot['capacities']['regular']; ?> (<?php echo $slot['prices']['regular'] ?? '500'; ?>৳) | 
-                                VIP: <?php echo $slot['capacities']['vip']; ?> (<?php echo $slot['prices']['vip'] ?? '1000'; ?>৳) | 
-                                Front: <?php echo $slot['capacities']['front']; ?> (<?php echo $slot['prices']['front'] ?? '200'; ?>৳)
+                    <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; transition: 0.3s; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+                        <!-- Header -->
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px;">
+                            <div>
+                                <div style="font-size: 1.1rem; font-weight: 600; color: #fff; margin-bottom: 5px;">
+                                    <i class="fas fa-calendar-alt" style="color: var(--primary); margin-right: 8px;"></i>
+                                    <?php echo htmlspecialchars($slot['time']); ?>
+                                </div>
+                                <div style="font-size: 0.9rem; color: var(--text-dim);">
+                                    <i class="fas fa-map-marker-alt" style="margin-right: 8px;"></i>
+                                    <?php echo htmlspecialchars($slot['location']); ?>
+                                </div>
                             </div>
+                            <form method="POST" onsubmit="return confirm('Delete this slot? This will NOT delete existing bookings.');">
+                                <input type="hidden" name="delete_slot" value="<?php echo $slot['id']; ?>">
+                                <button type="submit" style="background: rgba(239, 68, 68, 0.1); border: 1px solid var(--danger); color: var(--danger); width: 32px; height: 32px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s;">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </form>
                         </div>
-                        <form method="POST" onsubmit="return confirm('Delete this slot? This will NOT delete existing bookings.');">
-                            <input type="hidden" name="delete_slot" value="<?php echo $slot['id']; ?>">
-                            <button type="submit" style="background: none; border: none; color: var(--danger); cursor: pointer; font-size: 1.1rem;">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-                        </form>
+
+                        <!-- Stats Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: rgba(0,0,0,0.2); padding: 15px; border-radius: 8px;">
+                            <?php 
+                            $types = [
+                                'regular' => ['label' => 'Regular', 'color' => '#a78bfa'],
+                                'vip' => ['label' => 'VIP', 'color' => '#fbbf24'],
+                                'front' => ['label' => 'Front', 'color' => '#f472b6']
+                            ];
+                            foreach($types as $key => $meta): 
+                                $cap = $slot['capacities'][$key] ?? 0;
+                                $sold = $slotStats[$slot['id']][$key] ?? 0;
+                                $available = max(0, $cap - $sold);
+                                $percent = ($cap > 0) ? round(($sold / $cap) * 100) : 0;
+                            ?>
+                            <div style="text-align: center;">
+                                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 4px;"><?php echo $meta['label']; ?></div>
+                                <div style="font-size: 1.2rem; font-weight: 700; color: <?php echo $meta['color']; ?>;">
+                                    <?php echo $available; ?>
+                                    <span style="font-size: 0.8rem; color: var(--text-dim); font-weight: 400;">/ <?php echo $cap; ?></span>
+                                </div>
+                                <div style="font-size: 0.7rem; color: var(--text-dim); margin-top: 2px;">
+                                    <?php echo ($slot['prices'][$key] ?? 0); ?>৳
+                                </div>
+                                <!-- Micro Progress Bar -->
+                                <div style="height: 3px; background: rgba(255,255,255,0.1); margin-top: 8px; border-radius: 2px; overflow: hidden;">
+                                    <div style="height: 100%; width: <?php echo $percent; ?>%; background: <?php echo $meta['color']; ?>;"></div>
+                                </div>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
                     </div>
                     <?php endforeach; ?>
                 </div>
