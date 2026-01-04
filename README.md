@@ -34,7 +34,7 @@ Secure session-based admin system with the ability to manage multiple administra
 ## 🛠️ Tech Stack
 - **Frontend**: Vanilla HTML5, CSS3 (Custom Theatrical Design).
 - **Backend**: Native PHP 7.4+.
-- **Database**: JSON Storage (Bookings & Admins).
+- **Database**: MySQL (Primary) / JSON Fallback (Dev).
 - **External APIs**: 
     - **Internal Test Gateway** (Simulated Payments).
     - [QRServer](https://goqr.me/api/) (QR Generation).
