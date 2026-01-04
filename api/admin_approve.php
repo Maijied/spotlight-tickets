@@ -14,29 +14,29 @@ if (!isset($_SESSION['admin_logged_in'])) {
 
 if($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['txn_id'])) {
     $txn = $_POST['txn_id'];
-    $pdo = Database::connect();
     
-    // Fetch booking details
-    $stmt = $pdo->prepare("SELECT * FROM bookings WHERE txnid = ?");
-    $stmt->execute([$txn]);
-    $booking = $stmt->fetch();
+    // 1. Find Booking (Supports DB or JSON)
+    $all = Database::getBookings();
+    $booking = null;
+    foreach($all as $b) {
+        if($b['txnid'] === $txn) {
+            $booking = $b;
+            break;
+        }
+    }
 
     if ($booking) {
-        // Update Status
-        $update = $pdo->prepare("UPDATE bookings SET status = 'confirmed' WHERE txnid = ?");
-        $update->execute([$txn]);
+        // 2. Update Status (Supports DB or JSON)
+        Database::updateBookingStatus($txn, 'confirmed');
 
-        // Send Email (We can reuse TicketMailer)
-        // Note: TicketMailer::sendConfirmation expects specific params
-        // public static function sendConfirmation($to, $name, $amount, $txnId, $tier, $slot)
-        
+        // 3. Send Email
         TicketMailer::sendConfirmation(
             $booking['email'],
             $booking['name'],
             $booking['amount'],
             $booking['txnid'],
-            $booking['tier'],
-            $booking['slot_id']
+            $booking['tier'] ?? 'General',
+            $booking['slot_id'] ?? 'slot_default'
         );
 
         header('Location: ../public/admin.php?success=approved');

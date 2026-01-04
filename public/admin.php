@@ -475,13 +475,17 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
             </table>
         </div>
 
-        <div class="section-title">
-            <h2>System Administrators & Event Settings</h2>
-            <hr>
+        <div class="admin-header">
+        <h2>System Administrators & Event Settings</h2>
+        <div style="display: flex; gap: 15px;">
+            <a href="scan.php" target="_blank" style="background: #E91E63; color: white; padding: 10px 20px; text-decoration: none; border-radius: 6px; font-weight: bold; display: flex; align-items: center;">
+                <i class="fas fa-qrcode" style="margin-right: 8px;"></i> Scan Tickets
+            </a>
+            <a href="logout.php" style="color: #ef4444; text-decoration: none; padding: 10px; border: 1px solid #ef4444; border-radius: 6px; display: flex; align-items: center;">
+                <i class="fas fa-sign-out-alt" style="margin-right: 5px;"></i> Logout
+            </a>
         </div>
-
-        <div class="mgmt-grid" style="display: flex; flex-direction: column; gap: 40px;">
-            
+    </div>        
             <!-- 0. PENDING PAYMENTS (Priority) -->
             <?php
             $all_bookings = Database::getBookings();

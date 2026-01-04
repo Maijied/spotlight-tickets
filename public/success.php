@@ -1,3 +1,4 @@
+<?php
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 
@@ -5,11 +6,14 @@ $txnid = isset($_GET['txnid']) ? htmlspecialchars($_GET['txnid']) : '';
 $booking = null;
 
 if($txnid) {
-    // Fetch from DB
-    $pdo = Database::connect();
-    $stmt = $pdo->prepare("SELECT * FROM bookings WHERE txnid = ?");
-    $stmt->execute([$txnid]);
-    $booking = $stmt->fetch();
+    // Fetch from DB (Supports JSON fallback)
+    $bookings = Database::getBookings();
+    foreach($bookings as $b) {
+        if($b['txnid'] === $txnid) {
+            $booking = $b;
+            break;
+        }
+    }
 }
 
 if (!$booking) {
