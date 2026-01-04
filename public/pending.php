@@ -22,6 +22,13 @@
         <p style="color: #ccc; font-size: 0.9rem;">
             অ্যাডমিন আপনার পেমেন্ট যাচাই করার পর আপনি একটি <strong>কনফার্মেশন ইমেইল/SMS</strong> পাবেন। এতে ১-২ ঘণ্টা সময় লাগতে পারে।
         </p>
+        
+        <div style="margin-top: 30px;">
+            <a href="success.php?txnid=<?php echo htmlspecialchars($_GET['txn'] ?? ''); ?>" style="background: #fbbf24; color: #000; padding: 10px 20px; border-radius: 4px; text-decoration: none; font-weight: bold;">
+                টিকেট চেক করুন <!-- Check Ticket Status -->
+            </a>
+        </div>
+        
         <a href="index.php" style="color: #fbbf24; margin-top: 20px; display: inline-block;">হোম পেইজে ফিরে যান</a>
     </div>
 </body>

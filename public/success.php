@@ -1,9 +1,34 @@
-<?php
 require_once __DIR__ . '/../config/config.php';
+require_once __DIR__ . '/../includes/db.php';
 
-$txnid = isset($_GET['txnid']) ? htmlspecialchars($_GET['txnid']) : 'N/A';
-$amount = isset($_GET['amount']) ? htmlspecialchars($_GET['amount']) : '0';
-?>
+$txnid = isset($_GET['txnid']) ? htmlspecialchars($_GET['txnid']) : '';
+$booking = null;
+
+if($txnid) {
+    // Fetch from DB
+    $pdo = Database::connect();
+    $stmt = $pdo->prepare("SELECT * FROM bookings WHERE txnid = ?");
+    $stmt->execute([$txnid]);
+    $booking = $stmt->fetch();
+}
+
+if (!$booking) {
+    die("Invalid Ticket ID");
+}
+
+if ($booking['status'] !== 'confirmed') {
+    if ($booking['status'] === 'pending') {
+         header("Location: pending.php?txn=$txnid");
+         exit;
+    }
+    die("Ticket Status: " . htmlspecialchars($booking['status']));
+}
+
+$amount = $booking['amount'];
+// Update variables for View
+$tier = $booking['tier'];
+$qty = $booking['quantity'];
+
 <!DOCTYPE html>
 <html lang="bn">
 <head>
@@ -163,10 +188,13 @@ $amount = isset($_GET['amount']) ? htmlspecialchars($_GET['amount']) : '0';
 
         <div class="details">
             <div><span>অনুষ্ঠান:</span> <strong><?php echo EVENT_NAME; ?></strong></div>
-            <div><span>বিভাগ:</span> <strong><?php echo isset($_GET['tier']) ? htmlspecialchars($_GET['tier']) : 'সাধারণ'; ?></strong></div>
-            <div><span>সংখ্যা:</span> <strong><?php echo isset($_GET['qty']) ? htmlspecialchars($_GET['qty']) : '১'; ?></strong></div>
-            <div><span>মোট:</span> <strong><?php echo CURRENCY . ' ' . $amount; ?></strong></div>
+            <div><span>বিভাগ:</span> <strong><?php echo htmlspecialchars($tier); ?></strong></div>
+            <div><span>সংখ্যা:</span> <strong><?php echo htmlspecialchars($qty); ?></strong></div>
+            <div><span>মোট:</span> <strong><?php echo CURRENCY . ' ' . number_format($amount); ?></strong></div>
             <div><span>ট্রানজ্যাকশন:</span> <strong style="font-family: monospace;"><?php echo $txnid; ?></strong></div>
+            <div style="border: none; margin: 0; padding: 0;">
+                <span style="color: #10b981;">স্ট্যাটাস:</span> <strong style="color: #10b981;">কনফার্মড (PAID)</strong>
+            </div>
         </div>
 
         <div class="qr-section">
