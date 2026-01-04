@@ -31,19 +31,24 @@ jobs:
         ADMIN_EMAIL=admin@example.com
         EOF
         
-    - name: Deploy via FTP
-      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-      with:
-        server: ${{ secrets.FTP_SERVER }}
-        username: ${{ secrets.FTP_USERNAME }}
-        password: ${{ secrets.FTP_PASSWORD }}
-        server-dir: /htdocs/
-        exclude: |
-          **/.git*
-          **/.git*/**
-          **/node_modules/**
-          **/verify_*.sh
-          **/cookies.txt
+    - name: Deploy via FTP (lftp)
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y lftp
+        
+        lftp -c "
+        set ftp:ssl-allow no;
+        set ftp:passive-mode on;
+        open -u ${{ secrets.FTP_USERNAME }},${{ secrets.FTP_PASSWORD }} ${{ secrets.FTP_SERVER }};
+        mirror --reverse --delete --verbose \
+          --exclude .git/ \
+          --exclude .github/ \
+          --exclude node_modules/ \
+          --exclude verify_*.sh \
+          --exclude cookies.txt \
+          . /htdocs/;
+        bye;
+        "
           
     - name: Initialize Database
       run: |
