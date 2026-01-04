@@ -6,6 +6,10 @@
 // --- Internal Test Gateway Configuration ---
 // No API keys required for local simulation.
 
+// --- Manual Payment Configuration ---
+define('BKASH_NUMBER', '01968833917'); // Personal bKash Number
+define('PAYMENT_MODE', 'MANUAL');
+
 // Production Security: Disable error reporting
 error_reporting(0);
 ini_set('display_errors', 0);

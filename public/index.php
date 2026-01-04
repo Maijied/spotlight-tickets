@@ -252,7 +252,27 @@ foreach ($bookings as $b) {
             <div class="price-breakdown" id="price-breakdown">১টি টিকেট &times; ৫০০ BDT</div>
         </div>
 
-        <form action="../api/create_payment.php" method="POST">
+        <div style="background: rgba(233, 30, 99, 0.1); border: 2px dashed #E91E63; padding: 25px; border-radius: 8px; margin-bottom: 30px; text-align: center;">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 15px;">
+                <img src="https://freelogopng.com/images/all_img/1656227518bkash-logo-png.png" alt="bKash" style="height: 40px;">
+                <h3 style="color: #E91E63; margin: 0; font-family: 'Hind Siliguri', sans-serif;">বিকাশ পেমেন্ট নির্দেশিকা</h3>
+            </div>
+            <p style="color: #fff; line-height: 1.6; margin-bottom: 15px;">
+                অনুগ্রহ করে <strong>Send Money</strong> অপশন ব্যবহার করে নিচের নাম্বারে মোট টাকা পাঠান:
+            </p>
+            <div style="background: #E91E63; color: #fff; font-size: 1.5rem; font-weight: bold; display: inline-block; padding: 10px 25px; border-radius: 50px; margin-bottom: 20px; font-family: monospace; letter-spacing: 2px;">
+                <?php echo BKASH_NUMBER; ?>
+            </div>
+            <p style="color: #ccc; font-size: 0.9rem;">
+                টাকা পাঠানোর পর রেফারেন্স হিসেবে পাওয়া <strong>Transaction ID</strong> টি নিচের বক্সে লিখুন।
+            </p>
+        </div>
+
+        <form action="../api/submit_manual_booking.php" method="POST">
+            <div class="form-group" style="background: #000; padding: 20px; border: 1px solid #E91E63; border-radius: 8px; margin-bottom: 30px;">
+                <label for="bkash_txn_id" style="color: #E91E63;">BKASH TRANSACTION ID</label>
+                <input type="text" id="bkash_txn_id" name="bkash_txn_id" placeholder="যেমন: 9H7D6F5G" required style="text-transform: uppercase; letter-spacing: 2px; text-align: center; border-color: #E91E63;">
+            </div>
             <div class="form-group">
                 <label>শো এর সময় ও স্থান</label>
                 <div class="slot-grid" id="slot-grid">

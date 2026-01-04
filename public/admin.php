@@ -481,6 +481,55 @@ $popularTier = !empty($tierCounts) ? array_key_first($tierCounts) : 'N/A';
         </div>
 
         <div class="mgmt-grid" style="display: flex; flex-direction: column; gap: 40px;">
+            
+            <!-- 0. PENDING PAYMENTS (Priority) -->
+            <?php
+            $all_bookings = Database::getBookings();
+            $pending = array_filter($all_bookings, function($b) { return $b['status'] === 'pending'; });
+            if (count($pending) > 0):
+            ?>
+            <div class="form-card" style="border: 2px solid #fbbf24; background: rgba(251, 191, 36, 0.05);">
+                <h3 style="color: #fbbf24;"><i class="fas fa-clock"></i> Pending Payment Approvals</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+                    <thead>
+                        <tr style="text-align: left; border-bottom: 1px solid var(--border); color: var(--text-dim);">
+                            <th style="padding: 10px;">Name/Phone</th>
+                            <th style="padding: 10px;">Ticket Details</th>
+                            <th style="padding: 10px;">Txn ID (Verify This)</th>
+                            <th style="padding: 10px; text-align: right;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach($pending as $p): ?>
+                        <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <td style="padding: 12px 10px;">
+                                <div style="font-weight: bold;"><?php echo htmlspecialchars($p['name']); ?></div>
+                                <div style="font-size: 0.85rem; color: var(--text-dim);"><?php echo htmlspecialchars($p['phone']); ?></div>
+                            </td>
+                            <td style="padding: 12px 10px;">
+                                <div><?php echo htmlspecialchars($p['tier']); ?> x <?php echo $p['quantity']; ?></div>
+                                <div style="font-size: 0.85rem; color: var(--primary);"><?php echo $p['amount']; ?>k BDT</div>
+                            </td>
+                            <td style="padding: 12px 10px;">
+                                <div style="font-family: monospace; font-size: 1.1rem; color: #fbbf24; letter-spacing: 1px;">
+                                    <?php echo htmlspecialchars($p['txnid']); ?>
+                                </div>
+                            </td>
+                            <td style="padding: 12px 10px; text-align: right;">
+                                <form action="../api/admin_approve.php" method="POST" style="display: inline;">
+                                    <input type="hidden" name="txn_id" value="<?php echo $p['txnid']; ?>">
+                                    <button type="submit" style="background: #10b981; color: #fff; border: none; padding: 8px 15px; border-radius: 4px; cursor: pointer; font-weight: bold;">
+                                        <i class="fas fa-check"></i> Confirm
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        <?php endforeach; ?>
+                    </tbody>
+                </table>
+            </div>
+            <?php endif; ?>
+
             <!-- 1. Event Name Section -->
             <div class="form-card">
                 <h3>Event Name</h3>
