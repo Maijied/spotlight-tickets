@@ -15,8 +15,8 @@ class FlexPay {
     public static function createPayment($data) {
         if (defined('DUMMY_MODE') && DUMMY_MODE === true) {
             return [
-                'result' => 'success',
-                'payment_url' => SUCCESS_URL . '?transactionId=DUMMY_TXN_' . time() . '&dummy=1'
+                'status' => true,
+                'payment_url' => SUCCESS_URL . '?transactionId=TEST_GATEWAY_' . time() . '&dummy=1'
             ];
         }
 

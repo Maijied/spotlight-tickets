@@ -13,7 +13,7 @@ error_reporting(0);
 ini_set('display_errors', 0);
 
 // Set to true for dummy/sandbox testing without real API keys
-define('DUMMY_MODE', false);
+define('DUMMY_MODE', true);
 
 // --- MySQL Database Configuration ---
 define('DB_HOST', 'sql303.infinityfree.com');
