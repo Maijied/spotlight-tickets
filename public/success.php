@@ -6,14 +6,14 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
-$txnid = isset($_GET['txnid']) ? htmlspecialchars($_GET['txnid']) : '';
+$txnid = isset($_GET['txnid']) ? trim(htmlspecialchars($_GET['txnid'])) : '';
 $booking = null;
 
 if($txnid) {
-    // Fetch from DB (Supports JSON fallback)
+    // Fetch from DB
     $bookings = Database::getBookings();
     foreach($bookings as $b) {
-        if($b['txnid'] === $txnid) {
+        if(strcasecmp(trim($b['txnid']), $txnid) === 0) {
             $booking = $b;
             break;
         }

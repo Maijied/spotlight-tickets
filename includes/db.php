@@ -107,6 +107,7 @@ class Database {
         if ($stmt->fetchColumn() == 0) {
             $defaultSettings = [
                 'event_name' => 'Siddhartha Live 2026',
+                'ui_tagline' => 'এক কালজয়ী নাট্য গাথা',
                 'slots' => json_encode([
                     [
                         'id' => 'slot_1',
@@ -115,6 +116,19 @@ class Database {
                         'capacities' => ['regular' => 300, 'vip' => 100, 'front' => 100],
                         'prices' => ['regular' => 500, 'vip' => 1200, 'front' => 2500]
                     ]
+                ]),
+                'early_bird_rules' => json_encode([
+                    '2026-01-10' => 20,
+                    '2026-01-15' => 15,
+                    '2026-01-20' => 10
+                ]),
+                'bundle_rules' => json_encode([
+                    '10' => 20,
+                    '5' => 10
+                ]),
+                'promo_codes' => json_encode([
+                    'OFFER10' => 10,
+                    'OFFER20' => 20
                 ])
             ];
             
@@ -155,6 +169,7 @@ class Database {
     private static function getDefaultSettings() {
         return [
             'event_name' => 'Siddhartha Live 2026',
+            'ui_tagline' => 'এক কালজয়ী নাট্য গাথা',
             'slots' => [
                 [
                     'id' => 'slot_default',
@@ -163,7 +178,10 @@ class Database {
                     'capacities' => ['regular' => 300, 'vip' => 100, 'front' => 100],
                     'prices' => ['regular' => 500, 'vip' => 1200, 'front' => 2500]
                 ]
-            ]
+            ],
+            'early_bird_rules' => ['2026-01-10' => 20],
+            'bundle_rules' => ['5' => 10],
+            'promo_codes' => []
         ];
     }
     
@@ -283,19 +301,31 @@ class Database {
     }
     
     /**
-     * Update event name in settings
+     * Update any setting by key
      */
-    public static function updateEventName($name) {
+    public static function updateSetting($key, $value) {
         try {
             $pdo = self::connect();
             if (!$pdo) return false;
             
-            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('event_name', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
-            return $stmt->execute([$name, $name]);
+            // If value is array, json encode it
+            if (is_array($value)) {
+                $value = json_encode($value);
+            }
+            
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            return $stmt->execute([$key, $value, $value]);
         } catch (PDOException $e) {
-            error_log("Error updating event name: " . $e->getMessage());
+            error_log("Error updating setting $key: " . $e->getMessage());
             return false;
         }
+    }
+
+    /**
+     * Update event name in settings
+     */
+    public static function updateEventName($name) {
+        return self::updateSetting('event_name', $name);
     }
     
     /**

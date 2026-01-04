@@ -1,7 +1,7 @@
 <?php
 /**
  * Professional Admin Dashboard
- * Features: Sidebar navigation, Step-by-step workflow, Advanced filtering
+ * Features: Sidebar navigation, Step-by-step workflow, Advanced filtering, Dynamic Settings
  */
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
@@ -62,6 +62,12 @@ if (!isset($_SESSION['admin_logged_in']) || $_SESSION['admin_logged_in'] !== tru
     exit;
 }
 
+// --- Fetch Data ---
+$bookings = Database::getBookings();
+$settings = Database::getSettings();
+$SLOTS = $settings['slots'] ?? [];
+$admins = Database::getAdmins();
+
 // --- Data Processing (Post Actions) ---
 $activeTab = $_GET['tab'] ?? 'dashboard';
 
@@ -70,6 +76,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (isset($_POST['update_event_name'])) {
         Database::updateEventName($_POST['event_name']);
         $activeTab = 'events';
+        header("Refresh:0; url=admin.php?tab=events");
     }
     
     // 2. Slots (Add)
@@ -82,6 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ['regular' => (int)$_POST['price_regular'], 'vip' => (int)$_POST['price_vip'], 'front' => (int)$_POST['price_front']]
         );
         $activeTab = 'events';
+        header("Refresh:0; url=admin.php?tab=events");
     }
 
     // 3. Slots (Delete)
@@ -89,24 +97,82 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $idx = (int)$_POST['slot_index'];
         Database::deleteEvent($idx);
         $activeTab = 'events';
+        header("Refresh:0; url=admin.php?tab=events");
     }
 
     // 4. Admins
     if (isset($_POST['add_admin'])) {
         Database::saveAdmin($_POST['new_user'], password_hash($_POST['new_pass'], PASSWORD_DEFAULT));
         $activeTab = 'admins';
+        header("Refresh:0; url=admin.php?tab=admins");
     }
     if (isset($_POST['delete_admin'])) {
         Database::deleteAdmin($_POST['del_user']);
         $activeTab = 'admins';
+        header("Refresh:0; url=admin.php?tab=admins");
+    }
+
+    // 5. Dynamic Offers & Text
+    if (isset($_POST['update_ui_text'])) {
+        Database::updateSetting('ui_tagline', $_POST['ui_tagline']);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
+    }
+
+    // Early Bird
+    if (isset($_POST['add_early_bird'])) {
+        $rules = $settings['early_bird_rules'] ?? [];
+        $rules[$_POST['eb_date']] = (int)$_POST['eb_percent'];
+        Database::updateSetting('early_bird_rules', $rules);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
+    }
+    if (isset($_POST['del_early_bird'])) {
+        $rules = $settings['early_bird_rules'] ?? [];
+        unset($rules[$_POST['eb_date_key']]);
+        Database::updateSetting('early_bird_rules', $rules);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
+    }
+
+    // Bundles
+    if (isset($_POST['add_bundle'])) {
+        $rules = $settings['bundle_rules'] ?? [];
+        $rules[(int)$_POST['bd_qty']] = (int)$_POST['bd_percent'];
+        Database::updateSetting('bundle_rules', $rules);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
+    }
+    if (isset($_POST['del_bundle'])) {
+        $rules = $settings['bundle_rules'] ?? [];
+        unset($rules[$_POST['bd_qty_key']]);
+        Database::updateSetting('bundle_rules', $rules);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
+    }
+
+    // Promos
+    if (isset($_POST['add_promo'])) {
+        $rules = $settings['promo_codes'] ?? [];
+        $rules[strtoupper($_POST['promo_code'])] = (int)$_POST['promo_percent'];
+        Database::updateSetting('promo_codes', $rules);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
+    }
+    if (isset($_POST['del_promo'])) {
+        $rules = $settings['promo_codes'] ?? [];
+        unset($rules[$_POST['promo_code_key']]);
+        Database::updateSetting('promo_codes', $rules);
+        $activeTab = 'offers';
+        header("Refresh:0; url=admin.php?tab=offers");
     }
 }
 
-// --- Fetch Data ---
-$bookings = Database::getBookings();
-$settings = Database::getSettings();
-$SLOTS = $settings['slots'] ?? [];
-$admins = Database::getAdmins();
+// Refresh settings after post
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $settings = Database::getSettings();
+    $SLOTS = $settings['slots'] ?? [];
+}
 
 // Stats Calculation
 $pendingBookings = array_filter($bookings, fn($b) => ($b['status'] ?? 'confirmed') === 'pending');
@@ -188,6 +254,10 @@ foreach($bookings as $b) {
                 <i class="fas fa-cogs w-5"></i> <span class="sidebar-text">Event & Slots</span>
             </a>
 
+            <a onclick="switchTab('offers')" id="nav-offers" class="nav-item">
+                <i class="fas fa-tags w-5"></i> <span class="sidebar-text">Offers & Text</span>
+            </a>
+
             <a onclick="switchTab('bookings')" id="nav-bookings" class="nav-item">
                 <i class="fas fa-ticket-alt w-5"></i> <span class="sidebar-text">All Bookings</span>
             </a>
@@ -257,8 +327,6 @@ foreach($bookings as $b) {
                     <h3 class="text-lg font-bold mb-4">Slot Capacity Status</h3>
                     <div class="space-y-6">
                         <?php foreach($SLOTS as $s): 
-                            $sold = 0; // simple calculation needed per slot
-                            // Calculate sold per slot
                             $thisSlotSold = 0;
                             foreach($bookings as $b) {
                                 if(($b['slot_id'] ?? '') == $s['id']) $thisSlotSold += $b['quantity'];
@@ -383,22 +451,44 @@ foreach($bookings as $b) {
                             <div class="p-8 text-center border border-slate-700 border-dashed rounded-xl text-slate-500">No slots configured.</div>
                         <?php endif; ?>
                         
-                        <?php foreach($SLOTS as $idx => $s): ?>
+                        <?php foreach($SLOTS as $idx => $s): 
+                             // Calculate slot-wise revenue and count
+                             $sRevenue = 0;
+                             $sSold = 0;
+                             foreach($bookings as $b) {
+                                 if(($b['slot_id'] ?? '') == $s['id']) {
+                                     $sRevenue += $b['amount'];
+                                     $sSold += $b['quantity'];
+                                 }
+                             }
+                        ?>
                         <div class="card flex justify-between items-start group hover:border-slate-500 transition-colors">
-                            <div>
-                                <h4 class="text-xl font-bold text-white"><?php echo htmlspecialchars($s['time']); ?></h4>
+                            <div class="flex-1">
+                                <div class="flex justify-between items-start">
+                                    <h4 class="text-xl font-bold text-white"><?php echo htmlspecialchars($s['time']); ?></h4>
+                                    <!-- Slot Report -->
+                                    <div class="text-right mr-4">
+                                        <div class="text-xs text-slate-400">REVENUE</div>
+                                        <div class="font-bold text-success">৳<?php echo number_format($sRevenue); ?></div>
+                                        <div class="text-[10px] text-slate-500"><?php echo $sSold; ?> tix</div>
+                                    </div>
+                                </div>
                                 <p class="text-slate-400 text-sm mb-4"><i class="fas fa-map-marker-alt"></i> <?php echo htmlspecialchars($s['location']); ?></p>
                                 
-                                <div class="flex gap-4 text-sm">
+                                <div class="flex gap-4 text-sm mb-3">
                                     <div class="bg-slate-900 px-3 py-1 rounded border border-slate-700">
                                         <span class="text-primary font-bold">Regular</span> 
-                                        <span class="text-slate-400 ml-1"><?php echo $s['capacities']['regular']; ?> seats</span>
+                                        <span class="text-slate-400 ml-1"><?php echo $s['capacities']['regular']; ?></span>
                                     </div>
                                     <div class="bg-slate-900 px-3 py-1 rounded border border-slate-700">
                                         <span class="text-warning font-bold">VIP</span> 
-                                        <span class="text-slate-400 ml-1"><?php echo $s['capacities']['vip']; ?> seats</span>
+                                        <span class="text-slate-400 ml-1"><?php echo $s['capacities']['vip']; ?></span>
                                     </div>
                                 </div>
+                                
+                                <a href="../api/export_slot.php?slot_id=<?php echo $s['id']; ?>" class="inline-flex items-center gap-1 text-xs text-primary hover:text-white border border-primary/30 px-2 py-1 rounded hover:bg-primary transition-colors">
+                                    <i class="fas fa-file-download"></i> Export Data
+                                </a>
                             </div>
                             <form method="POST" onsubmit="return confirm('Delete this slot? Data will remain but slot will be gone.');">
                                 <input type="hidden" name="slot_index" value="<?php echo $idx; ?>">
@@ -407,6 +497,92 @@ foreach($bookings as $b) {
                         </div>
                         <?php endforeach; ?>
                     </div>
+                </div>
+            </div>
+
+            <!-- Offers & Text View -->
+            <div id="view-offers" class="view-section hidden">
+                <header class="mb-8">
+                    <h2 class="text-2xl font-bold">Offers & UI Text</h2>
+                    <p class="text-slate-400">Manage discounts, promo codes and website text.</p>
+                </header>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <!-- Global Text -->
+                    <div class="card h-fit">
+                        <h3 class="font-bold mb-4">Website Tagline</h3>
+                        <form method="POST" class="flex gap-2">
+                            <input type="text" name="ui_tagline" value="<?php echo htmlspecialchars($settings['ui_tagline'] ?? 'এক কালজয়ী নাট্য গাথা'); ?>" class="input-dark">
+                            <button type="submit" name="update_ui_text" class="btn-primary">Update</button>
+                        </form>
+                    </div>
+
+                    <!-- Early Bird & Bundle -->
+                    <div class="card h-fit">
+                         <h3 class="font-bold mb-4 flex justify-between">Early Bird Rules <span class="text-xs font-normal text-slate-400">Date Limit -> Discount %</span></h3>
+                         <ul class="space-y-2 mb-4">
+                             <?php foreach(($settings['early_bird_rules'] ?? []) as $date => $pct): ?>
+                             <li class="flex justify-between items-center bg-slate-900 p-2 rounded text-sm">
+                                 <span>Up to <strong><?php echo $date; ?></strong>: <span class="text-success"><?php echo $pct; ?>% OFF</span></span>
+                                 <form method="POST" class="inline">
+                                     <input type="hidden" name="eb_date_key" value="<?php echo $date; ?>">
+                                     <button type="submit" name="del_early_bird" class="text-slate-500 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                                 </form>
+                             </li>
+                             <?php endforeach; ?>
+                         </ul>
+                         <form method="POST" class="flex gap-2">
+                             <input type="date" name="eb_date" required class="input-dark w-full text-sm">
+                             <input type="number" name="eb_percent" placeholder="%" required class="input-dark w-20 text-sm">
+                             <button type="submit" name="add_early_bird" class="btn-primary text-sm"><i class="fas fa-plus"></i></button>
+                         </form>
+                    </div>
+
+                    <div class="card h-fit">
+                         <h3 class="font-bold mb-4 flex justify-between">Bundle Rules <span class="text-xs font-normal text-slate-400">Min Qty -> Discount %</span></h3>
+                         <ul class="space-y-2 mb-4">
+                             <?php
+                               $bundles = $settings['bundle_rules'] ?? [];
+                               krsort($bundles); // Show higher qty first
+                               foreach($bundles as $qty => $pct): 
+                             ?>
+                             <li class="flex justify-between items-center bg-slate-900 p-2 rounded text-sm">
+                                 <span>Buy <strong><?php echo $qty; ?>+</strong>: <span class="text-success"><?php echo $pct; ?>% OFF</span></span>
+                                 <form method="POST" class="inline">
+                                     <input type="hidden" name="bd_qty_key" value="<?php echo $qty; ?>">
+                                     <button type="submit" name="del_bundle" class="text-slate-500 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                                 </form>
+                             </li>
+                             <?php endforeach; ?>
+                         </ul>
+                         <form method="POST" class="flex gap-2">
+                             <input type="number" name="bd_qty" placeholder="Min Qty" required class="input-dark w-full text-sm">
+                             <input type="number" name="bd_percent" placeholder="%" required class="input-dark w-20 text-sm">
+                             <button type="submit" name="add_bundle" class="btn-primary text-sm"><i class="fas fa-plus"></i></button>
+                         </form>
+                    </div>
+
+                     <!-- Promo Codes -->
+                     <div class="card h-fit">
+                         <h3 class="font-bold mb-4 flex justify-between">Promo Codes <span class="text-xs font-normal text-slate-400">Code -> Discount %</span></h3>
+                         <ul class="space-y-2 mb-4">
+                             <?php foreach(($settings['promo_codes'] ?? []) as $code => $pct): ?>
+                             <li class="flex justify-between items-center bg-slate-900 p-2 rounded text-sm">
+                                 <span><code class="text-warning"><?php echo $code; ?></code>: <span class="text-success"><?php echo $pct; ?>% OFF</span></span>
+                                 <form method="POST" class="inline">
+                                     <input type="hidden" name="promo_code_key" value="<?php echo $code; ?>">
+                                     <button type="submit" name="del_promo" class="text-slate-500 hover:text-red-500"><i class="fas fa-trash"></i></button>
+                                 </form>
+                             </li>
+                             <?php endforeach; ?>
+                         </ul>
+                         <form method="POST" class="flex gap-2">
+                             <input type="text" name="promo_code" placeholder="Code (e.g. SAVE10)" required class="input-dark w-full text-sm">
+                             <input type="number" name="promo_percent" placeholder="%" required class="input-dark w-20 text-sm">
+                             <button type="submit" name="add_promo" class="btn-primary text-sm"><i class="fas fa-plus"></i></button>
+                         </form>
+                    </div>
+
                 </div>
             </div>
 
@@ -527,22 +703,25 @@ foreach($bookings as $b) {
         function switchTab(tabId) {
             // Update Menu
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.getElementById('nav-' + tabId).classList.add('active');
+            if(document.getElementById('nav-' + tabId)) {
+                document.getElementById('nav-' + tabId).classList.add('active');
+            }
 
             // Update View
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
-            document.getElementById('view-' + tabId).classList.remove('hidden');
+            if(document.getElementById('view-' + tabId)) {
+                document.getElementById('view-' + tabId).classList.remove('hidden');
+            }
             
             // Save state
             history.pushState(null, '', '?tab=' + tabId);
-
-            // Responsive Sidebar close (optional if we add mobile toggle)
         }
 
         // Initialize from URL
         document.addEventListener('DOMContentLoaded', () => {
             const params = new URLSearchParams(window.location.search);
             const tab = params.get('tab') || 'dashboard';
+            // ensure tab exists
             if(document.getElementById('view-' + tab)) {
                 switchTab(tab);
             } else {

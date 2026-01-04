@@ -218,7 +218,7 @@ foreach ($bookings as $b) {
     <div class="container">
         <div class="header">
             <h1><?php echo EVENT_NAME; ?></h1>
-            <p style="color: var(--accent); font-style: italic; letter-spacing: 3px; font-weight: 600;">এক কালজয়ী নাট্য গাথা</p>
+            <p style="color: var(--accent); font-style: italic; letter-spacing: 3px; font-weight: 600;"><?php echo UI_TAGLINE; ?></p>
             <div style="margin-top: 15px; font-size: 0.95rem; color: #9ca3af; letter-spacing: 1px;">
                 <span id="event-time-display">
                     <i class="fas fa-calendar-alt" style="color: var(--accent);"></i> <?php echo EVENT_DATE_TIME; ?> | 

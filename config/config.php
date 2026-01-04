@@ -30,6 +30,7 @@ require_once __DIR__ . '/../includes/db.php';
 $DYNAMIC_SETTINGS = Database::getSettings();
 
 define('EVENT_NAME', $DYNAMIC_SETTINGS['event_name'] ?? 'Siddhartha Live 2026');
+define('UI_TAGLINE', $DYNAMIC_SETTINGS['ui_tagline'] ?? 'এক কালজয়ী নাট্য গাথা');
 
 // Slots Management
 $SLOTS = $DYNAMIC_SETTINGS['slots'] ?? [];
@@ -54,27 +55,10 @@ $TICKET_TIERS = [
     'front'   => ['name' => 'Front Row Premium', 'price' => 2500]
 ];
 
-// Promo Codes (direct code => percentage discount)
-$PROMO_CODES = [
-    'OFFER10' => 10,
-    'OFFER20' => 20
-];
-
-// --- Advanced Discount Rules ---
-
-// Early Bird Rules (Date => Percentage)
-// Rules are checked in order: if current date <= key, that discount applies.
-$EARLY_BIRD_RULES = [
-    '2026-01-10' => 20, // 20% discount until Jan 10
-    '2026-01-15' => 15, // 15% discount until Jan 15
-    '2026-01-20' => 10  // 10% discount until Jan 20
-];
-
-// Bundle (Quantity) Rules (Min Quantity => Percentage)
-$BUNDLE_RULES = [
-    10 => 20, // 20% discount for 10 or more tickets
-    5  => 10  // 10% discount for 5 or more tickets
-];
+// Promo Codes (Dynamic), Early Bird Rules (Dynamic), Bundle Rules (Dynamic)
+$PROMO_CODES = $DYNAMIC_SETTINGS['promo_codes'] ?? [];
+$EARLY_BIRD_RULES = $DYNAMIC_SETTINGS['early_bird_rules'] ?? [];
+$BUNDLE_RULES = $DYNAMIC_SETTINGS['bundle_rules'] ?? [];
 
 // --- Application Settings ---
 define('BASE_URL', (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? "https" : "http") . "://$_SERVER[HTTP_HOST]");
