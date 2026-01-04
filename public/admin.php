@@ -101,46 +101,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // Update Settings
     if (isset($_POST['update_settings'])) {
-        $existing = Database::getSettings();
-        $existing['event_name'] = $_POST['event_name'];
-        Database::saveSettings($existing);
+        $new_name = $_POST['event_name'];
+        Database::updateEventName($new_name);
         header('Location: admin.php?success=settings');
         exit;
     }
 
     // Add Slot
     if (isset($_POST['add_slot'])) {
-        $settings = Database::getSettings();
-        $new_slot = [
-            'id' => 'slot_' . time(),
-            'time' => $_POST['slot_time'],
-            'location' => $_POST['slot_location'],
-            'capacities' => [
-                'regular' => (int)$_POST['cap_regular'],
-                'vip' => (int)$_POST['cap_vip'],
-                'front' => (int)$_POST['cap_front']
-            ],
-            'prices' => [
-                'regular' => (int)$_POST['price_regular'],
-                'vip' => (int)$_POST['price_vip'],
-                'front' => (int)$_POST['price_front']
-            ]
-        ];
-        $settings['slots'][] = $new_slot;
-        Database::saveSettings($settings);
+        // We assume 'event_name' comes from config/general setting or just use current default.
+        // For simplicity, we fetch the current default name or use a placeholder.
+        $current_settings = Database::getSettings();
+        $evt_name = $current_settings['event_name'] ?? 'Siddhartha Live';
+        
+        // Convert date format if needed, but assuming user inputs valid datetime str or we parse it
+        // The input 'slot_time' is likely "Jan 30, 07:00 PM". MySQL needs "Y-m-d H:i:s".
+        $raw_time = $_POST['slot_time'];
+        $mysql_time = date('Y-m-d H:i:s', strtotime($raw_time));
+        
+        Database::addEvent(
+            $evt_name,
+            $mysql_time,
+            $_POST['slot_location'],
+            (int)$_POST['cap_regular'],
+            (int)$_POST['cap_vip'],
+            (int)$_POST['cap_front']
+        );
+        
         header('Location: admin.php?success=slot');
         exit;
     }
 
     // Delete Slot
     if (isset($_POST['delete_slot'])) {
-        $settings = Database::getSettings();
         $sid = $_POST['delete_slot'];
-        $settings['slots'] = array_filter($settings['slots'], function($s) use ($sid) {
-            return $s['id'] !== $sid;
-        });
-        $settings['slots'] = array_values($settings['slots']); // Reset keys
-        Database::saveSettings($settings);
+        // $sid is like "slot_15". We need to extract ID 15.
+        if (strpos($sid, 'slot_') === 0) {
+            $db_id = substr($sid, 5); // remove 'slot_' prefix
+            Database::deleteEvent((int)$db_id);
+        }
+        
         header('Location: admin.php?success=slot_deleted');
         exit;
     }

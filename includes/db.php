@@ -222,6 +222,41 @@ class Database {
     }
 
     public static function saveSettings($data) {
+        // Fallback for file-based saves (legacy)
         return file_put_contents(self::$settings_json, json_encode($data, JSON_PRETTY_PRINT));
     }
+
+    /**
+     * --- EVENTS MANAGEMENT (Added for SaaS) ---
+     */
+    
+    public static function addEvent($name, $datetime, $location, $cap_reg, $cap_vip, $cap_front) {
+        $pdo = self::connect();
+        if ($pdo) {
+            $stmt = $pdo->prepare("INSERT INTO events (name, date_time, location, capacity_regular, capacity_vip, capacity_front) VALUES (?, ?, ?, ?, ?, ?)");
+            return $stmt->execute([$name, $datetime, $location, $cap_reg, $cap_vip, $cap_front]);
+        }
+        return false;
+    }
+
+    public static function deleteEvent($id) {
+        $pdo = self::connect();
+        if ($pdo) {
+            // We soft-delete by setting is_active = 0
+            $stmt = $pdo->prepare("UPDATE events SET is_active = 0 WHERE id = ?");
+            return $stmt->execute([$id]);
+        }
+        return false;
+    }
+
+    public static function updateEventName($new_name) {
+        $pdo = self::connect();
+        if ($pdo) {
+            // Update name for all active future events
+            $stmt = $pdo->prepare("UPDATE events SET name = ? WHERE is_active = 1 AND date_time > NOW()");
+            return $stmt->execute([$new_name]);
+        }
+        return false;
+    }
 }
+
