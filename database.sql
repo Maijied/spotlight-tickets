@@ -22,6 +22,23 @@ CREATE TABLE IF NOT EXISTS bookings (
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS events (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    date_time DATETIME NOT NULL,
+    location VARCHAR(255) NOT NULL,
+    capacity_regular INT DEFAULT 0,
+    capacity_vip INT DEFAULT 0,
+    capacity_front INT DEFAULT 0,
+    is_active TINYINT(1) DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Initial Event Data (Siddhartha Live 2026)
+INSERT INTO events (name, date_time, location, capacity_regular, capacity_vip, capacity_front)
+VALUES ('Siddhartha Live 2026', '2026-01-25 18:30:00', 'National Theatre, Dhaka', 300, 100, 100)
+ON DUPLICATE KEY UPDATE name=name;
+
 -- Initial default admin (admin / admin123)
 -- Hash: $2y$10$GsXdPGs4CJJwmi1NHnpYK.W38odyRfGnaV3h/NjqQELlBkAzXXRjW
 INSERT INTO admins (username, password) 

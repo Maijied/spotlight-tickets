@@ -167,8 +167,41 @@ class Database {
      */
 
     public static function getSettings() {
+        $slots = [];
+        $event_name = 'Siddhartha Live 2026'; // Fallback
+        
+        $pdo = self::connect();
+        if ($pdo) {
+            // Fetch active future events
+            $stmt = $pdo->query("SELECT * FROM events WHERE is_active = 1 AND date_time > NOW() ORDER BY date_time ASC");
+            $events = $stmt->fetchAll();
+            
+            if ($events) {
+                // Use name from the first active event (or logic to handle multiple)
+                $event_name = $events[0]['name'];
+                
+                foreach ($events as $e) {
+                    $slots[] = [
+                        'id' => 'slot_' . $e['id'],
+                        'time' => date('F d, Y | h:i A', strtotime($e['date_time'])),
+                        'location' => $e['location'],
+                        'capacities' => [
+                            'regular' => (int)$e['capacity_regular'],
+                            'vip' => (int)$e['capacity_vip'],
+                            'front' => (int)$e['capacity_front']
+                        ]
+                    ];
+                }
+                
+                return [
+                    'event_name' => $event_name,
+                    'slots' => $slots
+                ];
+            }
+        }
+
         if (!file_exists(self::$settings_json)) {
-            // Default initial settings
+            // Default initial settings (Fallback if DB empty/fails)
             return [
                 'event_name' => 'Siddhartha Live 2026',
                 'slots' => [
