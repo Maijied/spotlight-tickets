@@ -17,8 +17,8 @@ $error = '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['login'])) {
     $user = $_POST['username'] ?? '';
     $pass = $_POST['password'] ?? '';
-    foreach ($admins as $admin) {
-        if ($admin['username'] === $user && password_verify($pass, $admin['password'])) {
+    foreach ($admins as $u => $p) {
+        if ($u === $user && password_verify($pass, $p)) {
             $_SESSION['admin_logged_in'] = true;
             $_SESSION['admin_user'] = $user;
             header('Location: admin.php');
