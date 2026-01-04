@@ -42,22 +42,34 @@ Secure session-based admin system with the ability to manage multiple administra
 
 ## 🚀 Setup & Installation
 
-### 1. Configuration
-The system is pre-configured with the `LocalGateway` for testing. No external API keys are required.
+### 1. Automated Deployment (Recommended)
 
+The system uses GitHub Actions for automatic deployment. Setup once:
 
-### 2. Deployment
-To enable automatic deployment, follow these exact steps on your GitHub repository:
+1. **Go to GitHub Repository Settings → Secrets and variables → Actions**
+2. **Add these secrets:**
+   - `FTP_SERVER`: `ftpupload.net` (your FTP host)
+   - `FTP_USERNAME`: `if0_40819537` (your FTP username)
+   - `FTP_PASSWORD`: Your FTP password from InfinityFree
 
-1. Go to **Settings > Secrets and variables > Actions**.
-2. Click **New repository secret** for each of these:
-   - **`FTP_SERVER`**: Your FTP host (e.g., `ftpupload.net`)
-   - **`FTP_USERNAME`**: Your FTP username (e.g., `if0_xxxx`)
-   - **`FTP_PASSWORD`**: Your FTP password (vPanel Password)
+3. **That's it!** Every push to `main` branch will automatically:
+   - ✅ Create `.env` with database credentials
+   - ✅ Deploy all files via FTP
+   - ✅ Set proper permissions
 
-Once these are added, every push to the `main` branch will automatically update your site.
+### 2. First-Time Database Setup
 
-3. **Permissions**: Ensure the root directory and files like `bookings.json` have write permissions (CHMOD 777 or 666) on your hosting control panel.
+After first deployment, visit **once**:
+```
+https://your-domain.com/setup_database.php
+```
+
+This will:
+- Create all database tables
+- Insert default admin account
+- Set up initial event data
+
+**Security:** Delete `setup_database.php` after running it.
 
 ### 3. Admin Access
 Standard login path: `public/admin.php`

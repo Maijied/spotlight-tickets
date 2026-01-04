@@ -1,32 +1,62 @@
-name: Deploy to InfinityFree
+name: Deploy to Production
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v3
-
-      - name: Sync Files via FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          server-dir: /htdocs/
-          exclude: |
-            **/.git*
-            **/.github*
-            **/screenshots/**
-            README.md
-            task.md
-            implementation_plan.md
-            walkthrough.md
-            bookings.json
-            admins.json
-            sms_log.txt
+    - name: Checkout code
+      uses: actions/checkout@v3
+      
+    - name: Create .env file
+      run: |
+        cat > .env << EOF
+        # Database Configuration
+        DB_HOST=sql303.infinityfree.com
+        DB_NAME=if0_40819537_shiddarth
+        DB_USER=if0_40819537
+        DB_PASS=fWNDOUzsifw8yGh
+        
+        # Payment Configuration
+        BKASH_NUMBER=01968833917
+        PAYMENT_MODE=MANUAL
+        
+        # Application Settings
+        EVENT_NAME=Siddhartha Live 2026
+        ADMIN_EMAIL=admin@example.com
+        EOF
+        
+    - name: Deploy via FTP
+      uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+      with:
+        server: ${{ secrets.FTP_SERVER }}
+        username: ${{ secrets.FTP_USERNAME }}
+        password: ${{ secrets.FTP_PASSWORD }}
+        server-dir: /htdocs/
+        exclude: |
+          **/.git*
+          **/.git*/**
+          **/node_modules/**
+          **/verify_*.sh
+          **/cookies.txt
+          
+    - name: Initialize Database
+      run: |
+        echo "Database will be initialized on first access via setup_database.php"
+        echo "Visit: https://your-domain.com/setup_database.php after deployment"
+        
+    - name: Deployment Complete
+      run: |
+        echo "✓ Deployment successful!"
+        echo "✓ .env file created with database credentials"
+        echo "✓ Files uploaded to server"
+        echo ""
+        echo "Next steps:"
+        echo "1. Visit https://your-domain.com/setup_database.php (one time only)"
+        echo "2. Login to admin panel: https://your-domain.com/public/admin.php"
+        echo "3. Default credentials: admin / admin123"

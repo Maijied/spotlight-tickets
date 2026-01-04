@@ -6,20 +6,24 @@
 // --- Internal Test Gateway Configuration ---
 // No API keys required for local simulation.
 
-// --- Manual Payment Configuration ---
-define('BKASH_NUMBER', '01968833917'); // Personal bKash Number
-define('PAYMENT_MODE', 'MANUAL');
+// --- Environment Loader ---
+require_once __DIR__ . '/../includes/DotEnvLoader.php';
+DotEnvLoader::load(__DIR__ . '/../.env');
 
-// Production Security: Disable error reporting
+// --- Manual Payment Configuration ---
+define('BKASH_NUMBER', getenv('BKASH_NUMBER') ?: '01968833917');
+define('PAYMENT_MODE', getenv('PAYMENT_MODE') ?: 'MANUAL');
+
+// Production Security: Disable error reporting (unless debug mode is on)
 error_reporting(0);
 ini_set('display_errors', 0);
 
 
 // --- MySQL Database Configuration ---
-define('DB_HOST', 'sql303.infinityfree.com');
-define('DB_NAME', 'if0_40819537_shiddarth');
-define('DB_USER', 'if0_40819537');
-define('DB_PASS', 'fWNDOUzsifw8yGh');
+define('DB_HOST', getenv('DB_HOST') ?: 'sql303.infinityfree.com');
+define('DB_NAME', getenv('DB_NAME') ?: 'if0_40819537_shiddarth');
+define('DB_USER', getenv('DB_USER') ?: 'if0_40819537');
+define('DB_PASS', getenv('DB_PASS') ?: 'fWNDOUzsifw8yGh');
 
 // --- Dynamic Event Configuration ---
 require_once __DIR__ . '/../includes/db.php';

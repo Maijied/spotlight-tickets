@@ -2,6 +2,10 @@
 require_once __DIR__ . '/../config/config.php';
 require_once __DIR__ . '/../includes/db.php';
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 $txnid = isset($_GET['txnid']) ? htmlspecialchars($_GET['txnid']) : '';
 $booking = null;
 
@@ -32,7 +36,7 @@ $amount = $booking['amount'];
 // Update variables for View
 $tier = $booking['tier'];
 $qty = $booking['quantity'];
-
+?>
 <!DOCTYPE html>
 <html lang="bn">
 <head>
