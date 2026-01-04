@@ -1,459 +1,427 @@
 <?php
 /**
- * Database Configuration and Connection
- * Handles all database operations for the Spotlight Tickets system
+ * Database Class for Spotlight Tickets System
+ * Handles all database operations with static methods
  */
 
-// Database configuration
-define('DB_HOST', 'localhost');
-define('DB_USER', 'root');
-define('DB_PASS', '');
-define('DB_NAME', 'spotlight_tickets');
-
-try {
-    // Create database connection
-    $pdo = new PDO(
-        'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
-        DB_USER,
-        DB_PASS,
-        [
-            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
-            PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-            PDO::ATTR_EMULATE_PREPARES => false,
-        ]
-    );
-} catch (PDOException $e) {
-    die('Database Connection Failed: ' . $e->getMessage());
-}
-
-/**
- * Initialize Database Tables
- * Creates necessary tables if they don't exist
- */
-function initializeDatabase() {
-    global $pdo;
+class Database {
+    private static $pdo = null;
     
-    // Events table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS events (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        name VARCHAR(255) NOT NULL,
-        description TEXT,
-        date DATETIME NOT NULL,
-        location VARCHAR(255),
-        organizer VARCHAR(255),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    )");
+    /**
+     * Get database connection (singleton pattern)
+     */
+    public static function connect() {
+        if (self::$pdo === null) {
+            try {
+                self::$pdo = new PDO(
+                    'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4',
+                    DB_USER,
+                    DB_PASS,
+                    [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                        PDO::ATTR_EMULATE_PREPARES => false,
+                    ]
+                );
+                
+                // Ensure tables exist
+                self::initializeTables();
+                
+            } catch (PDOException $e) {
+                error_log("Database Connection Failed: " . $e->getMessage());
+                return null;
+            }
+        }
+        return self::$pdo;
+    }
     
-    // Slots table with prices field
-    $pdo->exec("CREATE TABLE IF NOT EXISTS slots (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        event_id INT NOT NULL,
-        slot_name VARCHAR(255) NOT NULL,
-        total_capacity INT NOT NULL DEFAULT 0,
-        available_seats INT NOT NULL DEFAULT 0,
-        price DECIMAL(10, 2) NOT NULL DEFAULT 0.00,
-        description TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE,
-        INDEX idx_event_id (event_id)
-    )");
+    /**
+     * Initialize database tables if they don't exist
+     */
+    private static function initializeTables() {
+        $pdo = self::$pdo;
+        
+        // Settings table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS settings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            setting_key VARCHAR(255) UNIQUE NOT NULL,
+            setting_value TEXT,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        
+        // Admins table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS admins (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        
+        // Bookings table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS bookings (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            txnid VARCHAR(255) UNIQUE NOT NULL,
+            full_name VARCHAR(255) NOT NULL,
+            email VARCHAR(255),
+            phone VARCHAR(50),
+            tier VARCHAR(100) DEFAULT 'regular',
+            quantity INT DEFAULT 1,
+            amount DECIMAL(10,2) NOT NULL,
+            promo_used VARCHAR(100),
+            status VARCHAR(50) DEFAULT 'pending',
+            slot_id VARCHAR(100) DEFAULT 'slot_default',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_status (status),
+            INDEX idx_txnid (txnid)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        
+        // Events table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS events (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            name VARCHAR(255) NOT NULL,
+            date_time DATETIME NOT NULL,
+            location VARCHAR(255) NOT NULL,
+            capacity_regular INT DEFAULT 300,
+            capacity_vip INT DEFAULT 100,
+            capacity_front INT DEFAULT 100,
+            is_active TINYINT(1) DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            INDEX idx_active_date (is_active, date_time)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        
+        // Checkins table
+        $pdo->exec("CREATE TABLE IF NOT EXISTS checkins (
+            booking_id INT PRIMARY KEY,
+            scanned_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+        
+        // Insert default admin if none exists
+        $stmt = $pdo->query("SELECT COUNT(*) FROM admins");
+        if ($stmt->fetchColumn() == 0) {
+            // Default: admin / admin123
+            $pdo->exec("INSERT INTO admins (username, password) VALUES ('admin', '\$2y\$10\$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi')");
+        }
+        
+        // Insert default settings if none exists
+        $stmt = $pdo->query("SELECT COUNT(*) FROM settings WHERE setting_key = 'event_name'");
+        if ($stmt->fetchColumn() == 0) {
+            $defaultSettings = [
+                'event_name' => 'Siddhartha Live 2026',
+                'slots' => json_encode([
+                    [
+                        'id' => 'slot_1',
+                        'time' => '২৫ জানুয়ারি ২০২৬, সন্ধ্যা ৬:৩০',
+                        'location' => 'জাতীয় নাট্যশালা, ঢাকা',
+                        'capacities' => ['regular' => 300, 'vip' => 100, 'front' => 100],
+                        'prices' => ['regular' => 500, 'vip' => 1200, 'front' => 2500]
+                    ]
+                ])
+            ];
+            
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?)");
+            foreach ($defaultSettings as $key => $value) {
+                $stmt->execute([$key, $value]);
+            }
+        }
+    }
     
-    // Tickets table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS tickets (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        slot_id INT NOT NULL,
-        ticket_number VARCHAR(255) UNIQUE NOT NULL,
-        customer_name VARCHAR(255) NOT NULL,
-        customer_email VARCHAR(255),
-        customer_phone VARCHAR(20),
-        status ENUM('available', 'sold', 'reserved', 'cancelled') DEFAULT 'available',
-        price DECIMAL(10, 2) NOT NULL,
-        purchase_date DATETIME,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (slot_id) REFERENCES slots(id) ON DELETE CASCADE,
-        INDEX idx_slot_id (slot_id),
-        INDEX idx_status (status)
-    )");
+    /**
+     * Get all settings as associative array
+     */
+    public static function getSettings() {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return self::getDefaultSettings();
+            
+            $stmt = $pdo->query("SELECT setting_key, setting_value FROM settings");
+            $settings = [];
+            while ($row = $stmt->fetch()) {
+                $value = $row['setting_value'];
+                // Try to decode JSON values
+                $decoded = json_decode($value, true);
+                $settings[$row['setting_key']] = ($decoded !== null) ? $decoded : $value;
+            }
+            
+            return array_merge(self::getDefaultSettings(), $settings);
+        } catch (PDOException $e) {
+            error_log("Error getting settings: " . $e->getMessage());
+            return self::getDefaultSettings();
+        }
+    }
     
-    // Orders table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS orders (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        order_number VARCHAR(255) UNIQUE NOT NULL,
-        customer_name VARCHAR(255) NOT NULL,
-        customer_email VARCHAR(255) NOT NULL,
-        customer_phone VARCHAR(20),
-        total_amount DECIMAL(10, 2) NOT NULL,
-        status ENUM('pending', 'completed', 'cancelled') DEFAULT 'pending',
-        payment_method VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        INDEX idx_status (status),
-        INDEX idx_email (customer_email)
-    )");
+    /**
+     * Get default settings
+     */
+    private static function getDefaultSettings() {
+        return [
+            'event_name' => 'Siddhartha Live 2026',
+            'slots' => [
+                [
+                    'id' => 'slot_default',
+                    'time' => 'TBD',
+                    'location' => 'TBD',
+                    'capacities' => ['regular' => 300, 'vip' => 100, 'front' => 100],
+                    'prices' => ['regular' => 500, 'vip' => 1200, 'front' => 2500]
+                ]
+            ]
+        ];
+    }
     
-    // Order items table
-    $pdo->exec("CREATE TABLE IF NOT EXISTS order_items (
-        id INT PRIMARY KEY AUTO_INCREMENT,
-        order_id INT NOT NULL,
-        ticket_id INT NOT NULL,
-        quantity INT NOT NULL DEFAULT 1,
-        price DECIMAL(10, 2) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
-        FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
-        INDEX idx_order_id (order_id)
-    )");
-}
-
-/**
- * Get all events
- */
-function getAllEvents() {
-    global $pdo;
-    try {
-        $stmt = $pdo->query("SELECT * FROM events ORDER BY date DESC");
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        error_log("Error fetching events: " . $e->getMessage());
-        return [];
+    /**
+     * Get all bookings
+     */
+    public static function getBookings() {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return [];
+            
+            $stmt = $pdo->query("SELECT * FROM bookings ORDER BY created_at DESC");
+            return $stmt->fetchAll();
+        } catch (PDOException $e) {
+            error_log("Error getting bookings: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Save a new booking
+     */
+    public static function saveBooking($data) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("
+                INSERT INTO bookings (txnid, full_name, email, phone, tier, quantity, amount, promo_used, status, slot_id)
+                VALUES (:txnid, :full_name, :email, :phone, :tier, :quantity, :amount, :promo_used, :status, :slot_id)
+            ");
+            
+            return $stmt->execute([
+                'txnid' => $data['txnid'] ?? uniqid('TXN'),
+                'full_name' => $data['full_name'] ?? '',
+                'email' => $data['email'] ?? '',
+                'phone' => $data['phone'] ?? '',
+                'tier' => $data['tier'] ?? 'regular',
+                'quantity' => $data['quantity'] ?? 1,
+                'amount' => $data['amount'] ?? 0,
+                'promo_used' => $data['promo_used'] ?? null,
+                'status' => $data['status'] ?? 'pending',
+                'slot_id' => $data['slot_id'] ?? 'slot_default'
+            ]);
+        } catch (PDOException $e) {
+            error_log("Error saving booking: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Update booking status
+     */
+    public static function updateBookingStatus($txnid, $status) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("UPDATE bookings SET status = ? WHERE txnid = ?");
+            return $stmt->execute([$status, $txnid]);
+        } catch (PDOException $e) {
+            error_log("Error updating booking status: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Get all admins
+     */
+    public static function getAdmins() {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return [];
+            
+            $stmt = $pdo->query("SELECT username, password FROM admins");
+            $admins = [];
+            while ($row = $stmt->fetch()) {
+                $admins[$row['username']] = $row['password'];
+            }
+            return $admins;
+        } catch (PDOException $e) {
+            error_log("Error getting admins: " . $e->getMessage());
+            return [];
+        }
+    }
+    
+    /**
+     * Save a new admin
+     */
+    public static function saveAdmin($username, $password) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("INSERT INTO admins (username, password) VALUES (?, ?) ON DUPLICATE KEY UPDATE password = ?");
+            return $stmt->execute([$username, $password, $password]);
+        } catch (PDOException $e) {
+            error_log("Error saving admin: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Delete an admin
+     */
+    public static function deleteAdmin($username) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("DELETE FROM admins WHERE username = ?");
+            return $stmt->execute([$username]);
+        } catch (PDOException $e) {
+            error_log("Error deleting admin: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Update event name in settings
+     */
+    public static function updateEventName($name) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('event_name', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            return $stmt->execute([$name, $name]);
+        } catch (PDOException $e) {
+            error_log("Error updating event name: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Add a new event/slot
+     */
+    public static function addEvent($time, $location, $capacities, $prices = []) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            // Get current slots
+            $settings = self::getSettings();
+            $slots = $settings['slots'] ?? [];
+            
+            // Add new slot
+            $newSlot = [
+                'id' => 'slot_' . (count($slots) + 1),
+                'time' => $time,
+                'location' => $location,
+                'capacities' => $capacities,
+                'prices' => $prices ?: ['regular' => 500, 'vip' => 1200, 'front' => 2500]
+            ];
+            $slots[] = $newSlot;
+            
+            // Save back to settings
+            $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('slots', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+            $json = json_encode($slots);
+            return $stmt->execute([$json, $json]);
+        } catch (PDOException $e) {
+            error_log("Error adding event: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Delete an event/slot by index
+     */
+    public static function deleteEvent($index) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            // Get current slots
+            $settings = self::getSettings();
+            $slots = $settings['slots'] ?? [];
+            
+            // Remove slot at index
+            if (isset($slots[$index])) {
+                array_splice($slots, $index, 1);
+                
+                // Save back to settings
+                $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES ('slots', ?) ON DUPLICATE KEY UPDATE setting_value = ?");
+                $json = json_encode($slots);
+                return $stmt->execute([$json, $json]);
+            }
+            return false;
+        } catch (PDOException $e) {
+            error_log("Error deleting event: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Get booking by transaction ID
+     */
+    public static function getBookingByTxnId($txnid) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return null;
+            
+            $stmt = $pdo->prepare("SELECT * FROM bookings WHERE txnid = ?");
+            $stmt->execute([$txnid]);
+            return $stmt->fetch();
+        } catch (PDOException $e) {
+            error_log("Error getting booking: " . $e->getMessage());
+            return null;
+        }
+    }
+    
+    /**
+     * Check if transaction ID exists
+     */
+    public static function txnExists($txnid) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM bookings WHERE txnid = ?");
+            $stmt->execute([$txnid]);
+            return $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log("Error checking txn: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Record check-in
+     */
+    public static function recordCheckin($bookingId) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("INSERT INTO checkins (booking_id) VALUES (?) ON DUPLICATE KEY UPDATE scanned_at = CURRENT_TIMESTAMP");
+            return $stmt->execute([$bookingId]);
+        } catch (PDOException $e) {
+            error_log("Error recording checkin: " . $e->getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Check if booking is already checked in
+     */
+    public static function isCheckedIn($bookingId) {
+        try {
+            $pdo = self::connect();
+            if (!$pdo) return false;
+            
+            $stmt = $pdo->prepare("SELECT COUNT(*) FROM checkins WHERE booking_id = ?");
+            $stmt->execute([$bookingId]);
+            return $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            error_log("Error checking checkin status: " . $e->getMessage());
+            return false;
+        }
     }
 }
-
-/**
- * Get event by ID
- */
-function getEventById($eventId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM events WHERE id = ?");
-        $stmt->execute([$eventId]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        error_log("Error fetching event: " . $e->getMessage());
-        return null;
-    }
-}
-
-/**
- * Create a new event
- */
-function createEvent($name, $description, $date, $location, $organizer) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO events (name, description, date, location, organizer)
-            VALUES (?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$name, $description, $date, $location, $organizer]);
-        return $pdo->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Error creating event: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get all slots for an event
- */
-function getEventSlots($eventId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            SELECT id, event_id, slot_name, total_capacity, available_seats, price, description
-            FROM slots
-            WHERE event_id = ?
-            ORDER BY slot_name ASC
-        ");
-        $stmt->execute([$eventId]);
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        error_log("Error fetching slots: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Get slot by ID with price information
- */
-function getSlotById($slotId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            SELECT id, event_id, slot_name, total_capacity, available_seats, price, description
-            FROM slots
-            WHERE id = ?
-        ");
-        $stmt->execute([$slotId]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        error_log("Error fetching slot: " . $e->getMessage());
-        return null;
-    }
-}
-
-/**
- * Create a new slot with price
- */
-function createSlot($eventId, $slotName, $totalCapacity, $price, $description = '') {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO slots (event_id, slot_name, total_capacity, available_seats, price, description)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$eventId, $slotName, $totalCapacity, $totalCapacity, $price, $description]);
-        return $pdo->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Error creating slot: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Update slot information including price
- */
-function updateSlot($slotId, $slotName, $totalCapacity, $price, $description = '') {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            UPDATE slots
-            SET slot_name = ?, total_capacity = ?, price = ?, description = ?
-            WHERE id = ?
-        ");
-        $stmt->execute([$slotName, $totalCapacity, $price, $description, $slotId]);
-        return true;
-    } catch (PDOException $e) {
-        error_log("Error updating slot: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get available seats for a slot
- */
-function getAvailableSeats($slotId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("SELECT available_seats FROM slots WHERE id = ?");
-        $stmt->execute([$slotId]);
-        $result = $stmt->fetch();
-        return $result ? (int)$result['available_seats'] : 0;
-    } catch (PDOException $e) {
-        error_log("Error fetching available seats: " . $e->getMessage());
-        return 0;
-    }
-}
-
-/**
- * Update available seats
- */
-function updateAvailableSeats($slotId, $quantity) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            UPDATE slots
-            SET available_seats = available_seats - ?
-            WHERE id = ? AND available_seats >= ?
-        ");
-        $stmt->execute([$quantity, $slotId, $quantity]);
-        return $stmt->rowCount() > 0;
-    } catch (PDOException $e) {
-        error_log("Error updating available seats: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get slot price
- */
-function getSlotPrice($slotId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("SELECT price FROM slots WHERE id = ?");
-        $stmt->execute([$slotId]);
-        $result = $stmt->fetch();
-        return $result ? (float)$result['price'] : 0.00;
-    } catch (PDOException $e) {
-        error_log("Error fetching slot price: " . $e->getMessage());
-        return 0.00;
-    }
-}
-
-/**
- * Create a new ticket
- */
-function createTicket($slotId, $ticketNumber, $customerName, $customerEmail, $customerPhone, $price) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO tickets (slot_id, ticket_number, customer_name, customer_email, customer_phone, price)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$slotId, $ticketNumber, $customerName, $customerEmail, $customerPhone, $price]);
-        return $pdo->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Error creating ticket: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get ticket by ID
- */
-function getTicketById($ticketId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM tickets WHERE id = ?");
-        $stmt->execute([$ticketId]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        error_log("Error fetching ticket: " . $e->getMessage());
-        return null;
-    }
-}
-
-/**
- * Update ticket status
- */
-function updateTicketStatus($ticketId, $status) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("UPDATE tickets SET status = ? WHERE id = ?");
-        $stmt->execute([$status, $ticketId]);
-        return true;
-    } catch (PDOException $e) {
-        error_log("Error updating ticket status: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Create a new order
- */
-function createOrder($orderNumber, $customerName, $customerEmail, $customerPhone, $totalAmount, $paymentMethod = 'credit_card') {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO orders (order_number, customer_name, customer_email, customer_phone, total_amount, payment_method)
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->execute([$orderNumber, $customerName, $customerEmail, $customerPhone, $totalAmount, $paymentMethod]);
-        return $pdo->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Error creating order: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get order by ID
- */
-function getOrderById($orderId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM orders WHERE id = ?");
-        $stmt->execute([$orderId]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        error_log("Error fetching order: " . $e->getMessage());
-        return null;
-    }
-}
-
-/**
- * Get order by order number
- */
-function getOrderByNumber($orderNumber) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("SELECT * FROM orders WHERE order_number = ?");
-        $stmt->execute([$orderNumber]);
-        return $stmt->fetch();
-    } catch (PDOException $e) {
-        error_log("Error fetching order: " . $e->getMessage());
-        return null;
-    }
-}
-
-/**
- * Update order status
- */
-function updateOrderStatus($orderId, $status) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("UPDATE orders SET status = ? WHERE id = ?");
-        $stmt->execute([$status, $orderId]);
-        return true;
-    } catch (PDOException $e) {
-        error_log("Error updating order status: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Add item to order
- */
-function addOrderItem($orderId, $ticketId, $quantity, $price) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            INSERT INTO order_items (order_id, ticket_id, quantity, price)
-            VALUES (?, ?, ?, ?)
-        ");
-        $stmt->execute([$orderId, $ticketId, $quantity, $price]);
-        return $pdo->lastInsertId();
-    } catch (PDOException $e) {
-        error_log("Error adding order item: " . $e->getMessage());
-        return false;
-    }
-}
-
-/**
- * Get order items
- */
-function getOrderItems($orderId) {
-    global $pdo;
-    try {
-        $stmt = $pdo->prepare("
-            SELECT oi.*, t.ticket_number, t.customer_name
-            FROM order_items oi
-            JOIN tickets t ON oi.ticket_id = t.id
-            WHERE oi.order_id = ?
-        ");
-        $stmt->execute([$orderId]);
-        return $stmt->fetchAll();
-    } catch (PDOException $e) {
-        error_log("Error fetching order items: " . $e->getMessage());
-        return [];
-    }
-}
-
-/**
- * Generate unique ticket number
- */
-function generateTicketNumber() {
-    return 'TKT-' . date('YmdHis') . '-' . strtoupper(substr(md5(microtime()), 0, 6));
-}
-
-/**
- * Generate unique order number
- */
-function generateOrderNumber() {
-    return 'ORD-' . date('YmdHis') . '-' . strtoupper(substr(md5(microtime()), 0, 6));
-}
-
-/**
- * Close database connection (optional)
- */
-function closeDatabase() {
-    global $pdo;
-    $pdo = null;
-}
-
-// Initialize database tables on include
-initializeDatabase();
-
-?>
