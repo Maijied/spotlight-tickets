@@ -112,7 +112,7 @@ if (defined('DUMMY_MODE') && DUMMY_MODE === true) {
 $response = FlexPay::createPayment($payment_data);
 
 // 5. Handle Response
-if (isset($response['result']) && $response['result'] === 'success' && isset($response['payment_url'])) {
+if (isset($response['status']) && $response['status'] === true && isset($response['payment_url'])) {
     header('Location: ' . $response['payment_url']);
     exit;
 } else {
