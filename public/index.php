@@ -252,6 +252,7 @@ foreach ($bookings as $b) {
             <div class="price-breakdown" id="price-breakdown">১টি টিকেট &times; ৫০০ BDT</div>
         </div>
 
+        <form action="../api/create_payment.php" method="POST">
             <div class="form-group">
                 <label>শো এর সময় ও স্থান</label>
                 <div class="slot-grid" id="slot-grid">

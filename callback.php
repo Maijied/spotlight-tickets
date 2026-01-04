@@ -54,7 +54,8 @@ if (isset($verification['status']) && $verification['status'] === 'COMPLETED') {
         'quantity' => $quantity,
         'amount' => $amount,
         'promo_used' => $promo_used,
-        'slot_id' => $slot_id
+        'slot_id' => $slot_id,
+        'status' => 'confirmed'
     ]);
     
     // b) Send Confirmation Email
