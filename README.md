@@ -36,19 +36,15 @@ Secure session-based admin system with the ability to manage multiple administra
 - **Backend**: Native PHP 7.4+.
 - **Database**: JSON Storage (Bookings & Admins).
 - **External APIs**: 
-    - [FlexPayBD](https://flexpaybd.com/) (Payments).
+    - **Internal Test Gateway** (Simulated Payments).
     - [QRServer](https://goqr.me/api/) (QR Generation).
     - [Google Fonts](https://fonts.google.com/).
 
 ## 🚀 Setup & Installation
 
 ### 1. Configuration
-Update `config/config.php` with your FlexPayBD credentials:
-```php
-define('FLEXPAY_API_KEY', 'YOUR_API_KEY');
-define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY');
-define('FLEXPAY_BRAND_KEY', 'YOUR_BRAND_KEY');
-```
+The system is pre-configured with the `LocalGateway` for testing. No external API keys are required.
+
 
 ### 2. Deployment
 To enable automatic deployment, follow these exact steps on your GitHub repository:

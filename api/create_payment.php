@@ -98,18 +98,8 @@ $payment_data = [
     ]
 ];
 
-if (defined('DUMMY_MODE') && DUMMY_MODE === true) {
-    $_SESSION['last_booking_meta'] = $payment_data['meta_data'];
-    $_SESSION['last_booking_customer'] = [
-        'name' => $full_name,
-        'email' => $email,
-        'phone' => $phone_number,
-        'amount' => round($final_amount)
-    ];
-}
-
-// 4. Call FlexPayBD API
-$response = FlexPay::createPayment($payment_data);
+// 4. Call Local Gateway
+$response = LocalGateway::createPayment($payment_data);
 
 // 5. Handle Response
 if (isset($response['status']) && $response['status'] === true && isset($response['payment_url'])) {

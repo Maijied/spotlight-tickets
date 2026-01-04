@@ -3,17 +3,13 @@
  * FlexPayBD Ticket System Configuration
  */
 
-// --- FlexPayBD API Credentials ---
-define('FLEXPAY_API_KEY', 'gnXi7etgWNhFyFGZFrOMYyrmnF4A1eGU5SC2QRmUvILOlNc2Ef');
-define('FLEXPAY_SECRET_KEY', 'YOUR_SECRET_KEY_HERE'); // <--- MISSING
-define('FLEXPAY_BRAND_KEY', 'cPSX0a4EexE4MVqT7v0Pp80dfpFHHQZpD2kvNLahbcAMm5qKXC');
+// --- Internal Test Gateway Configuration ---
+// No API keys required for local simulation.
 
 // Production Security: Disable error reporting
 error_reporting(0);
 ini_set('display_errors', 0);
 
-// Set to true for dummy/sandbox testing without real API keys
-define('DUMMY_MODE', true);
 
 // --- MySQL Database Configuration ---
 define('DB_HOST', 'sql303.infinityfree.com');
